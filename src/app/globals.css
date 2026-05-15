@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  @apply antialiased scroll-smooth;
+}
+
+body {
+  @apply min-h-screen bg-brand-bg text-zinc-100;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(52, 211, 153, 0.12), transparent),
+    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(56, 189, 248, 0.06), transparent);
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}

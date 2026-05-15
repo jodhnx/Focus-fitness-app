@@ -1,0 +1,10 @@
+{
+  "name": "ApexFit",
+  "short_name": "ApexFit",
+  "description": "Premium fitness & nutrition — calories, macros, workouts, recipes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "orientation": "portrait-primary"
+}

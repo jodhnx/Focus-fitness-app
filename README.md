@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# ApexFit — Next.js 15 + Supabase + Vercel
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Premium **fitness & nutrition** web app (MyFitnessPal / Hevy–style): auth, onboarding, food search (Open Food Facts), training plans, recipes, progress charts, and PWA-ready shell.
 
-## Get started
+## Stack
 
-1. Install dependencies
+- **Next.js 15** (App Router) · **TypeScript** · **Tailwind CSS**
+- **Supabase** (Auth + Postgres) with `@supabase/ssr` cookies
+- **TanStack Query** · **Framer Motion** (auth screens) · **Recharts** (progress demo)
+- **Vercel**-friendly: `next build` / Edge-compatible middleware session refresh
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Quick start
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env.local
+# set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+npm run dev
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Learn more
+## Supabase
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Create a project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, run migrations **in order**:
+   - `supabase/migrations/001_initial_schema.sql`
+   - `supabase/migrations/002_next_schema_extensions.sql`
+3. **Authentication → URL configuration**: add your site URL and redirect URLs, e.g.
+   - `http://localhost:3000/auth/callback`
+   - `https://YOUR_VERCEL_DOMAIN/auth/callback`
+4. Enable **Email** provider (and optional **Confirm email**).
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Vercel
 
-## Join the community
+1. Import the repo in Vercel.
+2. Set environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Deploy. No custom build command required (`npm run build`).
 
-Join our community of developers creating universal apps.
+Optional: set `NEXT_PUBLIC_SITE_URL` to your production URL for future absolute links / SEO `metadataBase`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## PWA
+
+- `public/manifest.json` + `metadata` / `viewport` in `src/app/layout.tsx`.
+- Add `public/icons/icon-192.png` and `icon-512.png` for install prompts (currently omitted to avoid broken icon URLs).
+
+## Project layout
+
+```
+src/app/
+  (auth)/          # login, register, forgot-password
+  (app)/           # authenticated shell: dashboard, nutrition, workouts, recipes, progress, profile, settings
+  onboarding/      # post-signup profile wizard
+  api/food/search  # server proxy for Open Food Facts (EU-biased search in lib)
+src/components/    # AppShell, GlassCard, providers
+src/lib/           # Supabase clients, OFF API, nutrition math, dates
+src/data/          # recipes, training plans, exercises (seed / UI)
+```
+
+## What was removed
+
+The previous **Expo / React Native** client was removed in favor of this **web-first** codebase (mobile users use Safari/Chrome + PWA).
+
+## Next steps (product)
+
+- Persist meals & water to Supabase (`meals`, `meal_items`, `water_entries`).
+- Full workout session logger writing `workouts` + `workout_sets`.
+- Nutritionix server route with secret key (never expose to browser).
+- AI routes using OpenAI/Anthropic with streaming.
