@@ -3,7 +3,12 @@ import Link from 'next/link';
 import { GlassCard } from '@/components/ui/glass-card';
 import { createClient } from '@/lib/supabase/server';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ onboarding?: string }>;
+}) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,6 +21,15 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {sp.onboarding === 'success' ? (
+        <div
+          role="status"
+          className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100"
+        >
+          Onboarding saved. Your dashboard is ready.
+        </div>
+      ) : null}
+
       <div>
         <h1 className="text-2xl font-black tracking-tight text-white">Hey, {name}</h1>
         <p className="text-sm text-zinc-400">Today — stay consistent, earn the streak.</p>

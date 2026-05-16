@@ -532,6 +532,10 @@ create policy "profiles_select_own"
   on public.profiles for select to authenticated
   using (id = auth.uid());
 
+create policy "profiles_insert_own"
+  on public.profiles for insert to authenticated
+  with check (id = auth.uid());
+
 create policy "profiles_update_own"
   on public.profiles for update to authenticated
   using (id = auth.uid())
