@@ -15,18 +15,32 @@ export const metadata: Metadata = {
   description:
     'Premium fitness and nutrition tracking — calories, macros, workouts, recipes, and progress.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon.svg',
+    shortcut: '/icons/icon.svg',
+    apple: '/icons/icon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'ApexFit',
   },
   formatDetection: { telephone: false },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
+    'apple-mobile-web-app-title': 'ApexFit',
+    'msapplication-TileColor': '#050506',
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: '#050506',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

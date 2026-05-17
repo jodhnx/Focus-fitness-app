@@ -8,15 +8,39 @@
 
 html {
   @apply antialiased scroll-smooth;
+  width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   @apply min-h-screen bg-brand-bg text-zinc-100;
+  width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
   background-image:
     radial-gradient(ellipse 120% 80% at 50% -20%, rgba(52, 211, 153, 0.12), transparent),
     radial-gradient(ellipse 80% 50% at 100% 0%, rgba(56, 189, 248, 0.06), transparent);
 }
 
+* {
+  min-width: 0;
+}
+
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0rem);
 }

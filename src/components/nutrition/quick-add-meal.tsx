@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Apple, Heart, Loader2, Search, X } from 'lucide-react';
+import { Apple, Heart, Loader2, Minus, Plus, Search, X } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, useTransition } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -116,13 +116,6 @@ export function QuickAddMeal({
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                   />
                 </label>
-                <SelectField label="Meal" name="meal" value={mealType} onChange={(event) => setMealType(event.target.value as MealType)}>
-                  {mealTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </SelectField>
                 <SelectField label="Amount" name="mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
                   <option value="custom">custom g</option>
                   <option value="serving">serving</option>
@@ -135,7 +128,53 @@ export function QuickAddMeal({
                   value={mode === 'package' ? packageGrams : grams}
                   onChange={(event) => (mode === 'package' ? setPackageGrams(event.target.value) : setGrams(event.target.value))}
                 />
-                <Field label="Servings" name="servings" type="number" step="0.1" value={servings} onChange={(event) => setServings(event.target.value)} />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Servings</p>
+                  <div className="mt-1 flex rounded-xl border border-white/10 bg-black/40">
+                    <button type="button" className="px-2 text-zinc-300" onClick={() => setServings(String(Math.max(0.5, Number(servings || 1) - 0.5)))}>
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <input value={servings} onChange={(event) => setServings(event.target.value)} inputMode="decimal" className="w-full bg-transparent px-2 py-2.5 text-center text-sm text-white outline-none" />
+                    <button type="button" className="px-2 text-zinc-300" onClick={() => setServings(String(Number(servings || 1) + 0.5))}>
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {mealTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setMealType(type)}
+                    className={`rounded-2xl px-2 py-2 text-xs font-black capitalize ${
+                      mealType === type ? 'bg-brand-accent text-brand-bg' : 'border border-white/10 bg-white/5 text-zinc-300'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {[50, 100, 150, 200, 250, 500].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setMode('custom');
+                      setGrams(String(value));
+                    }}
+                    className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300"
+                  >
+                    {value}g
+                  </button>
+                ))}
+                <button type="button" onClick={() => setMode('serving')} className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                  serving
+                </button>
+                <button type="button" onClick={() => setMode('package')} className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                  package
+                </button>
               </div>
               {pills.length > 0 ? (
                 <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -166,6 +205,14 @@ export function QuickAddMeal({
                     const servingGrams = gramsFromServingLabel(item.servingLabel);
                     const displayGrams = mode === 'package' ? Number(packageGrams) || 250 : mode === 'serving' ? (Number(servings) || 1) * servingGrams : Number(grams) || 100;
                     const multiplier = Math.max(1, displayGrams) / 100;
+                    const preview = {
+                      calories: Math.round(item.calories * multiplier),
+                      protein: Math.round(item.protein * multiplier),
+                      carbs: Math.round(item.carbs * multiplier),
+                      fat: Math.round(item.fat * multiplier),
+                      fiber: Math.round((item.fiber ?? 0) * multiplier),
+                      sugar: Math.round((item.sugar ?? 0) * multiplier),
+                    };
                     return (
                       <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                         <div className="flex gap-3">
@@ -174,12 +221,12 @@ export function QuickAddMeal({
                             <p className="line-clamp-2 font-bold text-white">{item.name}</p>
                             <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel} · {Math.round(displayGrams)}g selected</p>
                             <div className="mt-2 grid grid-cols-3 gap-1 text-[11px] sm:grid-cols-6">
-                              <N label="kcal" value={Math.round(item.calories * multiplier)} />
-                              <N label="P" value={`${Math.round(item.protein * multiplier)}g`} />
-                              <N label="C" value={`${Math.round(item.carbs * multiplier)}g`} />
-                              <N label="F" value={`${Math.round(item.fat * multiplier)}g`} />
-                              <N label="fiber" value={`${Math.round((item.fiber ?? 0) * multiplier)}g`} />
-                              <N label="sugar" value={`${Math.round((item.sugar ?? 0) * multiplier)}g`} />
+                              <N label="kcal" value={preview.calories} />
+                              <N label="P" value={`${preview.protein}g`} />
+                              <N label="C" value={`${preview.carbs}g`} />
+                              <N label="F" value={`${preview.fat}g`} />
+                              <N label="fiber" value={`${preview.fiber}g`} />
+                              <N label="sugar" value={`${preview.sugar}g`} />
                             </div>
                           </div>
                         </div>
