@@ -109,7 +109,7 @@ export function QuickAddMeal({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_132px_112px_112px]">
+              <div className="mt-4">
                 <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
                   <Search className="h-4 w-4 text-zinc-500" />
                   <input
@@ -123,30 +123,6 @@ export function QuickAddMeal({
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                   />
                 </label>
-                <SelectField label="Amount" name="mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
-                  <option value="custom">custom g</option>
-                  <option value="serving">serving</option>
-                  <option value="package">package</option>
-                </SelectField>
-                <Field
-                  label={mode === 'package' ? 'Package g' : 'Grams'}
-                  name="grams"
-                  type="number"
-                  value={mode === 'package' ? packageGrams : grams}
-                  onChange={(event) => (mode === 'package' ? setPackageGrams(event.target.value) : setGrams(event.target.value))}
-                />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Servings</p>
-                  <div className="mt-1 flex rounded-xl border border-white/10 bg-black/40">
-                    <button type="button" className="px-2 text-zinc-300" onClick={() => setServings(String(Math.max(0.5, Number(servings || 1) - 0.5)))}>
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <input value={servings} onChange={(event) => setServings(event.target.value)} inputMode="decimal" className="w-full bg-transparent px-2 py-2.5 text-center text-sm text-white outline-none" />
-                    <button type="button" className="px-2 text-zinc-300" onClick={() => setServings(String(Number(servings || 1) + 0.5))}>
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {mealTypes.map((type) => (
@@ -161,27 +137,6 @@ export function QuickAddMeal({
                     {type}
                   </button>
                 ))}
-              </div>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {[50, 100, 150, 200, 250, 500].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setMode('custom');
-                      setGrams(String(value));
-                    }}
-                    className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300"
-                  >
-                    {value}g
-                  </button>
-                ))}
-                <button type="button" onClick={() => setMode('serving')} className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
-                  serving
-                </button>
-                <button type="button" onClick={() => setMode('package')} className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
-                  package
-                </button>
               </div>
               {pills.length > 0 ? (
                 <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -216,6 +171,10 @@ export function QuickAddMeal({
                       servings={servings}
                       packageGrams={packageGrams}
                       mealType={mealType}
+                      setMode={setMode}
+                      setGrams={setGrams}
+                      setServings={setServings}
+                      setPackageGrams={setPackageGrams}
                       pending={pending}
                       logPending={logMutation.isPending}
                       onAdd={() => logMutation.mutate(buildFormData(selectedFood))}
@@ -291,6 +250,10 @@ function SelectedFoodDetail({
   servings,
   packageGrams,
   mealType,
+  setMode,
+  setGrams,
+  setServings,
+  setPackageGrams,
   pending,
   logPending,
   onAdd,
@@ -302,6 +265,10 @@ function SelectedFoodDetail({
   servings: string;
   packageGrams: string;
   mealType: MealType;
+  setMode: (mode: 'custom' | 'serving' | 'package') => void;
+  setGrams: (grams: string) => void;
+  setServings: (servings: string) => void;
+  setPackageGrams: (grams: string) => void;
   pending: boolean;
   logPending: boolean;
   onAdd: () => void;
@@ -335,6 +302,73 @@ function SelectedFoodDetail({
         <N label="fiber" value={`${values.fiber}g`} />
         <N label="sugar" value={`${values.sugar}g`} />
         <N label="salt" value={`${values.sodiumMg}mg`} />
+      </div>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-3">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Menge auswählen</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('custom')}
+            className={`rounded-xl px-2 py-2 text-xs font-black ${mode === 'custom' ? 'bg-brand-accent text-brand-bg' : 'bg-white/10 text-zinc-300'}`}
+          >
+            Gramm
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('serving')}
+            className={`rounded-xl px-2 py-2 text-xs font-black ${mode === 'serving' ? 'bg-brand-accent text-brand-bg' : 'bg-white/10 text-zinc-300'}`}
+          >
+            Portion
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('package')}
+            className={`rounded-xl px-2 py-2 text-xs font-black ${mode === 'package' ? 'bg-brand-accent text-brand-bg' : 'bg-white/10 text-zinc-300'}`}
+          >
+            Packung
+          </button>
+        </div>
+        <div className="mt-3">
+          {mode === 'serving' ? (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Portionen</p>
+              <div className="mt-1 flex rounded-xl border border-white/10 bg-black/40">
+                <button type="button" className="px-3 text-zinc-300" onClick={() => setServings(String(Math.max(0.5, Number(servings || 1) - 0.5)))}>
+                  <Minus className="h-4 w-4" />
+                </button>
+                <input value={servings} onChange={(event) => setServings(event.target.value)} inputMode="decimal" className="w-full bg-transparent px-2 py-2.5 text-center text-sm text-white outline-none" />
+                <button type="button" className="px-3 text-zinc-300" onClick={() => setServings(String(Number(servings || 1) + 0.5))}>
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{mode === 'package' ? 'Packung in Gramm' : 'Gramm'}</p>
+              <input
+                value={mode === 'package' ? packageGrams : grams}
+                onChange={(event) => (mode === 'package' ? setPackageGrams(event.target.value) : setGrams(event.target.value))}
+                inputMode="numeric"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-center text-sm font-bold text-white outline-none"
+              />
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {[50, 100, 150, 200, 250, 500].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setMode('custom');
+                setGrams(String(value));
+              }}
+              className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300"
+            >
+              {value}g
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mt-3 flex gap-2">
         <Button type="button" className="flex-1" disabled={logPending} onClick={onAdd}>

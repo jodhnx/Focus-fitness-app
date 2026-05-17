@@ -36,13 +36,16 @@ export default function LoginPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <form
         onSubmit={onSubmit}
-        className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-xl"
+        className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.2),transparent_34%),rgba(255,255,255,.055)] p-6 shadow-glass backdrop-blur-xl"
       >
-        <h2 className="text-lg font-bold text-white">Sign in</h2>
-        <p className="mt-1 text-sm text-zinc-400">Welcome back — continue your streak.</p>
+        <div className="mb-6 rounded-3xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-brand-accent">ApexFit</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Willkommen zurück</h2>
+          <p className="mt-1 text-sm text-zinc-400">Logge dich in deinen Fitness-Account ein. Kein Vercel-Login nötig.</p>
+        </div>
         <label className="mt-6 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Email</label>
         <input
           type="email"
@@ -72,6 +75,7 @@ export default function LoginPage() {
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
+        <p className="mt-3 text-center text-xs text-zinc-500">Du brauchst nur dein ApexFit/Supabase Konto.</p>
         <div className="mt-4 flex justify-between text-sm">
           <Link href="/forgot-password" className="text-brand-accent hover:underline">
             Forgot password?

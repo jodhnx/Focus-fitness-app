@@ -23,11 +23,18 @@ export function ProgressClient({ data }: { data: ProgressData }) {
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white">Progress</h1>
-        <p className="text-sm text-zinc-400">Weight, body fat, measurements, photos, PRs, streaks and achievements.</p>
-      </div>
+    <div className="space-y-5">
+      <section className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.18),transparent_32%),rgba(255,255,255,.045)] p-5 shadow-glass">
+        <p className="text-xs font-black uppercase tracking-[0.28em] text-brand-accent">Progress</p>
+        <h1 className="mt-2 text-3xl font-black text-white">Deine Entwicklung</h1>
+        <p className="mt-1 text-sm text-zinc-400">Gewicht, Training, Kalorien, PRs und Streaks übersichtlich an einem Ort.</p>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <HeroStat label="Gewicht" value={latest?.weight_kg ? `${latest.weight_kg}kg` : `${profile.weight_kg}kg`} />
+          <HeroStat label="Ziel" value={`${profile.target_weight_kg}kg`} />
+          <HeroStat label="Workouts" value={workouts.length} />
+          <HeroStat label="Badges" value={achievements.length} />
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Weight" value={latest?.weight_kg ? `${latest.weight_kg} kg` : `${profile.weight_kg} kg`} sub={`target ${profile.target_weight_kg} kg`} />
@@ -158,6 +165,15 @@ export function ProgressClient({ data }: { data: ProgressData }) {
           </GlassCard>
         </div>
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+      <p className="mt-1 text-xl font-black text-white">{value}</p>
     </div>
   );
 }

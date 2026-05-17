@@ -49,13 +49,16 @@ export default function RegisterPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <form
         onSubmit={onSubmit}
-        className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-xl"
+        className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,.2),transparent_34%),rgba(255,255,255,.055)] p-6 shadow-glass backdrop-blur-xl"
       >
-        <h2 className="text-lg font-bold text-white">Create account</h2>
-        <p className="mt-1 text-sm text-zinc-400">Start your premium training log.</p>
+        <div className="mb-6 rounded-3xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-brand-accent">Start ApexFit</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Account erstellen</h2>
+          <p className="mt-1 text-sm text-zinc-400">Dein App-Konto bleibt dauerhaft in Supabase gespeichert.</p>
+        </div>
         <label className="mt-6 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Display name</label>
         <input
           type="text"
@@ -95,6 +98,7 @@ export default function RegisterPage() {
         >
           {loading ? 'Creating…' : 'Register'}
         </button>
+        <p className="mt-3 text-center text-xs text-zinc-500">Kein Vercel-Login. Nur dein Fitness-App Konto.</p>
         <p className="mt-4 text-center text-sm text-zinc-400">
           Already have an account?{' '}
           <Link href="/login" className="font-semibold text-brand-accent hover:underline">
