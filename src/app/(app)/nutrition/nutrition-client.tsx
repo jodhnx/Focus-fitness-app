@@ -25,7 +25,16 @@ import {
 } from '../actions';
 
 type NutritionData = Awaited<ReturnType<typeof getNutritionData>>;
-type Estimate = { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string };
+type Estimate = {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  servingLabel: string;
+  confidence?: string;
+  details?: string;
+};
 
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -135,8 +144,14 @@ export function NutritionClient({ data }: { data: NutritionData }) {
             </div>
           </GlassCard>
 
-          <GlassCard className="!p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Manual custom food</p>
+          <details className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Manual custom food</p>
+                <p className="text-xs text-zinc-500">Nur öffnen, wenn die Suche nichts findet.</p>
+              </div>
+              <span className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-black text-white">Open</span>
+            </summary>
             <form
               className="mt-3 grid gap-2 sm:grid-cols-2"
               action={async (formData) => {
@@ -164,27 +179,32 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                 <Plus className="h-4 w-4" /> Add custom food
               </Button>
             </form>
-          </GlassCard>
+          </details>
         </div>
 
         <div className="space-y-4">
           <GlassCard className="!p-4">
-            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">AI food scanner</p>
-            <p className="mt-1 text-xs text-zinc-400">Upload a meal/product photo and add a short description for a quick estimate.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-brand-accent">KI Food Scanner</p>
+                <p className="mt-1 text-xs text-zinc-400">Beschreibe dein Essen möglichst konkret, z.B. „200g Huhn, 150g Reis, Brokkoli“.</p>
+              </div>
+              <Sparkles className="h-5 w-5 text-brand-accent" />
+            </div>
             <form
               className="mt-3 space-y-2"
               action={(formData) =>
                 startTransition(async () => {
                   const result = await estimateFoodPhotoAction(formData);
                   if (result.ok && result.estimate) setEstimate(result.estimate);
-                  pushToast({ title: result.ok ? 'Estimate ready' : 'Scanner error', body: result.message, tone: result.ok ? 'success' : 'error' });
+                  pushToast({ title: result.ok ? 'KI-Schätzung bereit' : 'Scanner error', body: result.message, tone: result.ok ? 'success' : 'error' });
                 })
               }
             >
               <Field label="Photo" name="photo" type="file" accept="image/*" capture="environment" />
-              <Field label="Description" name="description" placeholder="chicken rice bowl, pizza slice..." />
+              <Field label="Description" name="description" placeholder="z.B. Huhn Reis Bowl, Pizza, Skyr mit Banane..." />
               <Button type="submit" disabled={pending} variant="secondary" className="w-full">
-                <Camera className="h-4 w-4" /> Analyze food
+                <Camera className="h-4 w-4" /> KI-Schätzung erstellen
               </Button>
             </form>
             {estimate ? (
@@ -195,8 +215,16 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                   pushToast({ title: result.ok ? 'Estimate logged' : 'Food error', body: result.message, tone: result.ok ? 'success' : 'error' });
                 }}
               >
-                <p className="font-bold text-white">{estimate.name}</p>
-                <p className="text-xs text-zinc-400">{estimate.calories} kcal · P{estimate.protein} C{estimate.carbs} F{estimate.fat}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-white">{estimate.name}</p>
+                    <p className="text-xs text-zinc-400">{estimate.calories} kcal · P{estimate.protein} C{estimate.carbs} F{estimate.fat}</p>
+                  </div>
+                  <span className="rounded-full bg-brand-accent/15 px-2 py-1 text-[10px] font-black uppercase text-brand-accent">
+                    {estimate.confidence ?? 'low'}
+                  </span>
+                </div>
+                {estimate.details ? <p className="mt-2 rounded-xl bg-white/[0.04] p-2 text-xs text-zinc-400">{estimate.details}</p> : null}
                 <input type="hidden" name="mealType" value="lunch" />
                 <input type="hidden" name="name" value={estimate.name} />
                 <input type="hidden" name="servingLabel" value={estimate.servingLabel} />

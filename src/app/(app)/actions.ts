@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { foodCatalog } from '@/data/food-catalog';
 import { createClient } from '@/lib/supabase/server';
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
@@ -22,6 +23,93 @@ function text(formData: FormData, name: string, fallback = '') {
 function number(formData: FormData, name: string, fallback = 0) {
   const value = Number(formData.get(name));
   return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeFoodText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function servingGrams(label: string) {
+  const match = label.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+  return match?.[1] ? Number(match[1].replace(',', '.')) : 100;
+}
+
+function gramsNearTerm(description: string, term: string, fallback: number) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const before = new RegExp(`(\\d{2,4})\\s*g\\s+(?:\\w+\\s+){0,3}${escaped}`, 'i');
+  const after = new RegExp(`${escaped}(?:\\s+\\w+){0,3}\\s+(\\d{2,4})\\s*g`, 'i');
+  const match = description.match(before) ?? description.match(after);
+  return match?.[1] ? Math.max(10, Number(match[1])) : fallback;
+}
+
+function rounded(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+const aiAliases: Record<string, string[]> = {
+  chicken: ['chicken', 'huhn', 'huehnchen', 'huhnerbrust', 'huehnerbrust', 'hähnchen', 'haehnchen'],
+  rice: ['rice', 'reis'],
+  pasta: ['pasta', 'nudeln', 'spaghetti'],
+  bread: ['bread', 'brot', 'vollkornbrot', 'roggenbrot', 'semmel', 'toast'],
+  oats: ['oats', 'hafer', 'haferflocken', 'porridge'],
+  skyr: ['skyr'],
+  topfen: ['topfen', 'quark', 'magertopfen'],
+  egg: ['egg', 'ei', 'eier'],
+  salmon: ['salmon', 'lachs'],
+  tuna: ['tuna', 'thunfisch'],
+  potato: ['potato', 'kartoffel', 'kartoffeln'],
+  broccoli: ['broccoli', 'brokkoli'],
+  banana: ['banana', 'banane'],
+};
+
+function estimateFromKnownFoods(label: string) {
+  const normalized = normalizeFoodText(label);
+  const matches = foodCatalog
+    .map((food) => {
+      const haystack = normalizeFoodText(`${food.name} ${food.brand ?? ''}`);
+      const aliases = Object.values(aiAliases)
+        .filter((terms) => terms.some((term) => haystack.includes(normalizeFoodText(term))))
+        .flat();
+      const terms = [...haystack.split(' ').filter((word) => word.length > 2), ...aliases.map(normalizeFoodText)];
+      const score = terms.reduce((sum, term) => sum + (normalized.includes(term) ? 1 : 0), 0);
+      return { food, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  if (matches.length === 0) return null;
+
+  const ingredients = matches.map(({ food }) => {
+    const defaultGrams = servingGrams(food.servingLabel);
+    const grams = gramsNearTerm(label, normalizeFoodText(food.name).split(' ')[0] ?? food.name, defaultGrams);
+    const multiplier = grams / 100;
+    return {
+      name: food.name,
+      grams,
+      calories: Math.round(food.calories * multiplier),
+      protein: rounded(food.protein * multiplier),
+      carbs: rounded(food.carbs * multiplier),
+      fat: rounded(food.fat * multiplier),
+    };
+  });
+
+  return {
+    name: label,
+    calories: ingredients.reduce((sum, item) => sum + item.calories, 0),
+    protein: rounded(ingredients.reduce((sum, item) => sum + item.protein, 0)),
+    carbs: rounded(ingredients.reduce((sum, item) => sum + item.carbs, 0)),
+    fat: rounded(ingredients.reduce((sum, item) => sum + item.fat, 0)),
+    servingLabel: 'KI-Schätzung',
+    confidence: matches.length >= 2 ? 'high' : 'medium',
+    details: ingredients.map((item) => `${item.grams}g ${item.name}`).join(', '),
+  };
 }
 
 async function unlock(userIdValue: string, achievementId: string, xp = 50) {
@@ -455,25 +543,50 @@ export async function saveRecipeAction(formData: FormData): Promise<ActionResult
 
 export async function estimateFoodPhotoAction(formData: FormData): Promise<
   ActionResult & {
-    estimate?: { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string };
+    estimate?: { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string; confidence?: string; details?: string };
   }
 > {
   try {
     await userId();
     const label = text(formData, 'description') || (formData.get('photo') instanceof File ? (formData.get('photo') as File).name : 'Food plate');
     const normalized = label.toLowerCase();
-    const estimate =
-      normalized.includes('pizza') || normalized.includes('burger')
-        ? { name: label, calories: 650, protein: 28, carbs: 72, fat: 28, servingLabel: '1 portion' }
-        : normalized.includes('salad') || normalized.includes('salat')
-          ? { name: label, calories: 320, protein: 22, carbs: 24, fat: 14, servingLabel: '1 bowl' }
-          : normalized.includes('oat') || normalized.includes('hafer')
-            ? { name: label, calories: 380, protein: 16, carbs: 56, fat: 10, servingLabel: '1 bowl' }
-            : { name: label, calories: 520, protein: 32, carbs: 48, fat: 18, servingLabel: '1 serving' };
+    const knownFoodEstimate = estimateFromKnownFoods(label);
+    const plateSize = normalized.includes('large') || normalized.includes('gross') || normalized.includes('groß') ? 1.25 : normalized.includes('small') || normalized.includes('klein') ? 0.75 : 1;
+    const template =
+      normalized.includes('pizza')
+        ? { calories: 760, protein: 34, carbs: 86, fat: 30, details: 'Pizza Template' }
+        : normalized.includes('burger')
+          ? { calories: 690, protein: 35, carbs: 62, fat: 34, details: 'Burger Template' }
+          : normalized.includes('salad') || normalized.includes('salat')
+            ? { calories: 360, protein: 28, carbs: 24, fat: 18, details: 'Salat Template' }
+            : normalized.includes('bowl')
+              ? { calories: 560, protein: 38, carbs: 62, fat: 18, details: 'Bowl Template' }
+              : normalized.includes('oat') || normalized.includes('hafer')
+                ? { calories: 420, protein: 24, carbs: 58, fat: 10, details: 'Oats Template' }
+                : { calories: 520, protein: 32, carbs: 48, fat: 18, details: 'Standard Mahlzeit Template' };
 
-    return { ok: true, message: 'Food estimate ready. Review before logging.', estimate };
+    const baseEstimate = knownFoodEstimate ?? {
+      name: label,
+      calories: template.calories,
+      protein: template.protein,
+      carbs: template.carbs,
+      fat: template.fat,
+      servingLabel: '1 Portion',
+      confidence: 'low',
+      details: template.details,
+    };
+
+    const estimate = {
+      ...baseEstimate,
+      calories: Math.round(baseEstimate.calories * plateSize),
+      protein: rounded(baseEstimate.protein * plateSize),
+      carbs: rounded(baseEstimate.carbs * plateSize),
+      fat: rounded(baseEstimate.fat * plateSize),
+    };
+
+    return { ok: true, message: 'KI-Schätzung bereit. Bitte Menge kurz prüfen.', estimate };
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : 'Could not estimate food.' };
+    return { ok: false, message: error instanceof Error ? error.message : 'KI-Schätzung fehlgeschlagen.' };
   }
 }
 
