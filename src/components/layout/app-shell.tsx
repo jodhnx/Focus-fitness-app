@@ -14,7 +14,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,10 @@ export function AppShell({
   const [isPending, startTransition] = useTransition();
   const navItems = useMemo(() => nav, [nav]);
 
+  useEffect(() => {
+    navItems.slice(0, 5).forEach((item) => router.prefetch(item.href));
+  }, [navItems, router]);
+
   async function logout() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -69,6 +73,8 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
+                onPointerEnter={() => router.prefetch(item.href)}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition',
                   active ? 'bg-brand-accent/15 text-brand-accent' : 'text-zinc-400 hover:bg-white/5 hover:text-white'
@@ -147,6 +153,8 @@ export function AppShell({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch
+                    onPointerEnter={() => router.prefetch(item.href)}
                     onClick={() => setOpen(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold',
@@ -188,6 +196,8 @@ export function AppShell({
             <Link
               key={item.href}
               href={item.href}
+              prefetch
+              onPointerEnter={() => router.prefetch(item.href)}
               className={cn(
                 'flex flex-1 touch-manipulation flex-col items-center gap-0.5 py-2 text-[9px] font-bold uppercase tracking-wide',
                 active ? 'text-brand-accent' : 'text-zinc-500',

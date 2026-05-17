@@ -56,6 +56,7 @@ export function QuickAddMeal({
     queryKey: ['quick-food', deferredQuery],
     queryFn: () => searchFood(deferredQuery),
     enabled: deferredQuery.trim().length >= 2,
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60_000,
   });
 
@@ -119,7 +120,8 @@ export function QuickAddMeal({
                       setQuery(event.target.value);
                       setSelectedFood(null);
                     }}
-                    placeholder="Milch, Skyr, Haferflocken or barcode"
+                    inputMode="search"
+                    placeholder="Brot, Skyr, Haferflocken oder Barcode"
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                   />
                 </label>
@@ -158,8 +160,8 @@ export function QuickAddMeal({
                 </div>
               ) : data.length === 0 ? (
                 <GlassCard>
-                  <p className="font-bold text-white">Search Austrian and German products</p>
-                  <p className="mt-1 text-sm text-zinc-400">Type at least two characters or paste a barcode. Results show compact calories and macros for fast logging.</p>
+                  <p className="font-bold text-white">Österreichische & deutsche Produkte suchen</p>
+                  <p className="mt-1 text-sm text-zinc-400">Tippe mindestens zwei Zeichen. Treffer erscheinen automatisch, ohne Enter am Handy.</p>
                 </GlassCard>
               ) : (
                 <div className="space-y-3">

@@ -1,4 +1,5 @@
 import type { FoodCatalogItem } from '@/types/domain';
+import { foodCatalog } from '@/data/food-catalog';
 
 const BASE = 'https://world.openfoodfacts.org';
 const USER_AGENT = 'ApexFit/2.0 (https://apexfit.app)';
@@ -23,6 +24,69 @@ type OffProduct = {
   nutriments?: OffNutriments;
   countries_tags?: string[];
 };
+
+const SEARCH_TIMEOUT_MS = 1200;
+const QUERY_ALIASES: Record<string, string[]> = {
+  bread: ['brot', 'vollkornbrot', 'roggenbrot', 'sauerteigbrot', 'semmel', 'toastbrot'],
+  brot: ['brot', 'vollkornbrot', 'roggenbrot', 'sauerteigbrot', 'semmel', 'toastbrot'],
+  yogurt: ['joghurt', 'skyr', 'topfen'],
+  joghurt: ['joghurt', 'skyr', 'topfen'],
+  quark: ['topfen', 'magertopfen'],
+  topfen: ['topfen', 'magertopfen', 'quark'],
+  oats: ['haferflocken', 'dinkel flocken'],
+  hafer: ['haferflocken', 'oats'],
+  chicken: ['huhn', 'hühnerbrust', 'huhnchen', 'chicken'],
+  huhn: ['huhn', 'hühnerbrust', 'chicken'],
+  reis: ['reis', 'rice'],
+  rice: ['reis', 'rice'],
+  nudeln: ['nudeln', 'pasta'],
+  pasta: ['nudeln', 'pasta'],
+};
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function localFoodSearch(query: string, limit = 18): FoodCatalogItem[] {
+  const normalized = normalizeSearch(query);
+  if (normalized.length < 2) return [];
+
+  const queryWords = normalized.split(' ').filter(Boolean);
+  const aliasWords = queryWords.flatMap((word) => QUERY_ALIASES[word] ?? []);
+  const terms = [...queryWords, ...aliasWords.map(normalizeSearch)].filter(Boolean);
+
+  return foodCatalog
+    .map((food) => {
+      const haystack = normalizeSearch(`${food.name} ${food.brand ?? ''}`);
+      let score = 0;
+      for (const term of terms) {
+        if (haystack === term) score += 100;
+        else if (haystack.startsWith(term)) score += 55;
+        else if (haystack.includes(term)) score += 25;
+      }
+      if (queryWords.every((word) => haystack.includes(word))) score += 20;
+      return { food, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.food.name.localeCompare(b.food.name, 'de-AT'))
+    .slice(0, limit)
+    .map((entry) => entry.food);
+}
+
+function withTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), SEARCH_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 function mapProduct(p: OffProduct): FoodCatalogItem | null {
   const name = p.product_name?.trim();
@@ -91,11 +155,12 @@ export async function searchOpenFoodFacts(
   query: string,
   options?: { page?: number; pageSize?: number }
 ): Promise<FoodCatalogItem[]> {
-  const [austria, germany, switzerland] = await Promise.all([
+  const results = await Promise.allSettled([
     searchCountry(query, 'austria', options),
     searchCountry(query, 'germany', options),
     searchCountry(query, 'switzerland', { ...options, pageSize: 12 }),
   ]);
+  const [austria, germany, switzerland] = results.map((result) => (result.status === 'fulfilled' ? result.value : []));
   const seen = new Set<string>();
   return [...austria, ...germany, ...switzerland].filter((item) => {
     if (seen.has(item.id)) return false;
@@ -144,13 +209,25 @@ export async function fetchProductByBarcode(barcode: string): Promise<FoodCatalo
 }
 
 export async function searchFoodsWithFallback(query: string): Promise<FoodCatalogItem[]> {
+  const local = localFoodSearch(query);
+  const seen = new Set(local.map((f) => f.id));
   try {
-    const dach = await searchOpenFoodFacts(query);
-    if (dach.length >= 5) return dach;
-    const global = await searchOpenFoodFactsGlobal(query);
-    const seen = new Set(dach.map((f) => f.id));
-    return [...dach, ...global.filter((f) => !seen.has(f.id))].slice(0, 30);
+    const dach = await withTimeout(searchOpenFoodFacts(query, { pageSize: 36 }), []);
+    const mergedDach = dach.filter((f) => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
+    if (local.length + mergedDach.length >= 12) return [...local, ...mergedDach].slice(0, 36);
+
+    const global = await withTimeout(searchOpenFoodFactsGlobal(query), []);
+    const mergedGlobal = global.filter((f) => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
+    return [...local, ...mergedDach, ...mergedGlobal].slice(0, 36);
   } catch {
-    return searchOpenFoodFactsGlobal(query);
+    return local;
   }
 }
