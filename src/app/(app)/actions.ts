@@ -445,6 +445,8 @@ export async function saveRecipeAction(formData: FormData): Promise<ActionResult
     }
 
     revalidatePath('/recipes');
+    revalidatePath('/nutrition');
+    revalidatePath('/dashboard');
     return { ok: true, message: `${title} saved.` };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Could not save recipe.' };

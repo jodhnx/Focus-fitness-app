@@ -50,6 +50,18 @@ export type MealRow = {
 
 export type WaterEntryRow = { id: string; logged_at: string; volume_ml: number | null; glasses: number };
 export type WorkoutRow = { id: string; name: string; started_at: string; completed_at: string | null; muscle_groups: string[]; exercises: unknown[] };
+export type UserRecipeRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  image_url: string | null;
+  updated_at: string;
+};
 export type ProgressEntryRow = {
   id: string;
   entry_date: string;
@@ -106,7 +118,7 @@ export async function getNutritionData(date = toDateKey()) {
   const start = `${date}T00:00:00.000Z`;
   const end = `${date}T23:59:59.999Z`;
 
-  const [{ data: meals }, { data: water }, { data: favorites }, { data: recentFoods }] = await Promise.all([
+  const [{ data: meals }, { data: water }, { data: favorites }, { data: recentFoods }, { data: userRecipes }] = await Promise.all([
     supabase
       .from('meals')
       .select('id, meal_type, logged_at, name, meal_items(*)')
@@ -123,6 +135,11 @@ export async function getNutritionData(date = toDateKey()) {
       .order('logged_at', { ascending: false }),
     supabase.from('favorites').select('*').eq('user_id', user.id).eq('favorite_type', 'food').order('created_at', { ascending: false }),
     supabase.from('foods').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(8),
+    supabase
+      .from('recipes')
+      .select('id, title, description, category, calories, protein, carbs, fat, image_url, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false }),
   ]);
 
   const mealRows = (meals ?? []) as MealRow[];
@@ -137,6 +154,7 @@ export async function getNutritionData(date = toDateKey()) {
     totals,
     favorites: (favorites ?? []) as { id: string; label: string; metadata: Record<string, unknown> }[],
     recentFoods: (recentFoods ?? []) as Record<string, unknown>[],
+    userRecipes: (userRecipes ?? []) as UserRecipeRow[],
   };
 }
 

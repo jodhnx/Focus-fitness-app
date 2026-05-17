@@ -11,6 +11,7 @@ import { useAppStore } from '@/stores/app-store';
 import type { Recipe, RecipeCategory } from '@/types/domain';
 
 import { toggleFavoriteAction } from '../actions';
+import { RecipeBuilder } from './recipe-builder';
 
 const categories: ('all' | RecipeCategory)[] = ['all', 'breakfast', 'lunch', 'dinner', 'snack', 'high-protein', 'low-calorie', 'bulk'];
 
@@ -77,6 +78,8 @@ export function RecipesClient({ recipes }: { recipes: Recipe[] }) {
           ))}
         </div>
       </GlassCard>
+
+      <RecipeBuilder />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((recipe) => (

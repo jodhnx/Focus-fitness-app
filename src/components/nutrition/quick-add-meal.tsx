@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { logFoodAction, toggleFavoriteAction } from '@/app/(app)/actions';
 import { useAppStore } from '@/stores/app-store';
 import type { FoodCatalogItem, MealType } from '@/types/domain';
+import type { UserRecipeRow } from '@/lib/app-data';
 
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -33,14 +34,17 @@ export function QuickAddMeal({
   initialMealType = 'breakfast',
   favorites = [],
   recentFoods = [],
+  userRecipes = [],
 }: {
   triggerClassName?: string;
   triggerLabel?: string;
   initialMealType?: MealType;
   favorites?: { label: string; metadata: Record<string, unknown> }[];
   recentFoods?: Record<string, unknown>[];
+  userRecipes?: UserRecipeRow[];
 }) {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<'foods' | 'recipes'>('foods');
   const [query, setQuery] = useState('');
   const [mealType, setMealType] = useState<MealType>(initialMealType);
   const [grams, setGrams] = useState('100');
@@ -48,6 +52,7 @@ export function QuickAddMeal({
   const [mode, setMode] = useState<'custom' | 'serving' | 'package'>('custom');
   const [packageGrams, setPackageGrams] = useState('250');
   const [selectedFood, setSelectedFood] = useState<FoodCatalogItem | null>(null);
+  const [recipeServings, setRecipeServings] = useState('1');
   const [pending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -92,6 +97,28 @@ export function QuickAddMeal({
     return formData;
   }
 
+  function buildRecipeFormData(recipe: UserRecipeRow) {
+    const servingsValue = Math.max(0.25, Number(recipeServings) || 1);
+    const formData = new FormData();
+    formData.set('mealType', mealType);
+    formData.set('servings', String(servingsValue));
+    formData.set('amountGrams', '0');
+    formData.set('servingGrams', '100');
+    formData.set('name', recipe.title);
+    formData.set('brand', 'Eigenes Rezept');
+    formData.set('servingLabel', '1 Rezeptportion');
+    formData.set('imageUrl', recipe.image_url ?? '');
+    formData.set('calories', String(recipe.calories));
+    formData.set('protein', String(recipe.protein));
+    formData.set('carbs', String(recipe.carbs));
+    formData.set('fat', String(recipe.fat));
+    formData.set('fiber', '0');
+    formData.set('sugar', '0');
+    formData.set('sodiumMg', '0');
+    formData.set('source', 'custom');
+    return formData;
+  }
+
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
@@ -110,21 +137,50 @@ export function QuickAddMeal({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="mt-4">
-                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
-                  <Search className="h-4 w-4 text-zinc-500" />
-                  <input
-                    autoFocus
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setSelectedFood(null);
-                    }}
-                    inputMode="search"
-                    placeholder="Brot, Skyr, Haferflocken oder Barcode"
-                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-                  />
-                </label>
+              <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-black/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setView('foods');
+                    setSelectedFood(null);
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-black ${view === 'foods' ? 'bg-brand-accent text-brand-bg' : 'text-zinc-400'}`}
+                >
+                  Produkte suchen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setView('recipes');
+                    setSelectedFood(null);
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-black ${view === 'recipes' ? 'bg-brand-accent text-brand-bg' : 'text-zinc-400'}`}
+                >
+                  Eigene Rezepte
+                </button>
+              </div>
+              <div className="mt-3">
+                {view === 'foods' ? (
+                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+                    <Search className="h-4 w-4 text-zinc-500" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setSelectedFood(null);
+                      }}
+                      inputMode="search"
+                      placeholder="Brot, Skyr, Haferflocken oder Barcode"
+                      className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+                    />
+                  </label>
+                ) : (
+                  <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+                    <p className="text-sm font-bold text-white">Deine gespeicherten Rezepte</p>
+                    <p className="text-xs text-zinc-500">Wähle ein eigenes Rezept und logge es direkt ins Tagebuch.</p>
+                  </div>
+                )}
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {mealTypes.map((type) => (
@@ -140,7 +196,7 @@ export function QuickAddMeal({
                   </button>
                 ))}
               </div>
-              {pills.length > 0 ? (
+              {view === 'foods' && pills.length > 0 ? (
                 <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                   {pills.map((pill, index) => (
                     <button key={`${pill}-${index}`} type="button" onClick={() => setQuery(pill)} className="shrink-0 rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-300">
@@ -152,7 +208,60 @@ export function QuickAddMeal({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {isFetching ? (
+              {view === 'recipes' ? (
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Portionen</p>
+                    <div className="mt-1 flex rounded-xl border border-white/10 bg-black/40">
+                      <button type="button" className="px-3 text-zinc-300" onClick={() => setRecipeServings(String(Math.max(0.25, Number(recipeServings || 1) - 0.25)))}>
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <input
+                        value={recipeServings}
+                        onChange={(event) => setRecipeServings(event.target.value)}
+                        inputMode="decimal"
+                        className="w-full bg-transparent px-2 py-2.5 text-center text-sm text-white outline-none"
+                      />
+                      <button type="button" className="px-3 text-zinc-300" onClick={() => setRecipeServings(String(Number(recipeServings || 1) + 0.25))}>
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {userRecipes.length === 0 ? (
+                    <GlassCard>
+                      <p className="font-bold text-white">Noch keine eigenen Rezepte</p>
+                      <p className="mt-1 text-sm text-zinc-400">Erstelle unter „Rezepte“ ein eigenes Rezept aus Produkten. Danach erscheint es hier automatisch.</p>
+                    </GlassCard>
+                  ) : (
+                    userRecipes.map((recipe) => {
+                      const multiplier = Math.max(0.25, Number(recipeServings) || 1);
+                      return (
+                        <button
+                          key={recipe.id}
+                          type="button"
+                          disabled={logMutation.isPending}
+                          onClick={() => logMutation.mutate(buildRecipeFormData(recipe))}
+                          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-brand-accent/50"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="line-clamp-1 font-bold text-white">{recipe.title}</p>
+                              <p className="text-xs text-zinc-500">{recipe.category} · {recipe.description ?? 'Eigenes Rezept'}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-brand-accent/15 px-2 py-1 text-xs font-black text-brand-accent">loggen</span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
+                            <N label="kcal" value={Math.round(recipe.calories * multiplier)} />
+                            <N label="P" value={`${Math.round(recipe.protein * multiplier)}g`} />
+                            <N label="C" value={`${Math.round(recipe.carbs * multiplier)}g`} />
+                            <N label="F" value={`${Math.round(recipe.fat * multiplier)}g`} />
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              ) : isFetching ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, index) => (
                     <div key={index} className="h-24 animate-pulse rounded-2xl bg-white/5" />

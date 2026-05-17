@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { GlassCard } from '@/components/ui/glass-card';
 import { MetricCard, ProgressBar, ProgressRing } from '@/components/ui/metric-card';
 import { QuickAddMeal } from '@/components/nutrition/quick-add-meal';
-import { getDashboardData } from '@/lib/app-data';
+import { getDashboardData, type UserRecipeRow } from '@/lib/app-data';
 import { logWaterAction } from '../actions';
 
 export default async function DashboardPage({
@@ -12,7 +12,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ onboarding?: string }>;
 }) {
   const sp = await searchParams;
-  const { profile, totals, latestWorkout, latestProgress, weeklyActivity, workouts, achievements, favorites, recentFoods } = await getDashboardData();
+  const { profile, totals, latestWorkout, latestProgress, weeklyActivity, workouts, achievements, favorites, recentFoods, userRecipes } = await getDashboardData();
 
   const calorieTarget = profile.calorie_target ?? 2200;
   const proteinTarget = profile.protein_target_g ?? 160;
@@ -57,10 +57,10 @@ export default async function DashboardPage({
             <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-black/20 p-3">
               <p className="mb-2 text-center text-[10px] font-black uppercase tracking-widest text-zinc-500">Essen hinzufügen</p>
               <div className="grid grid-cols-2 gap-2">
-                <MealTile label="Frühstück" mealType="breakfast" favorites={favorites} recentFoods={recentFoods} />
-                <MealTile label="Mittagessen" mealType="lunch" favorites={favorites} recentFoods={recentFoods} />
-                <MealTile label="Abendessen" mealType="dinner" favorites={favorites} recentFoods={recentFoods} />
-                <MealTile label="Snacks" mealType="snack" favorites={favorites} recentFoods={recentFoods} />
+                <MealTile label="Frühstück" mealType="breakfast" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
+                <MealTile label="Mittagessen" mealType="lunch" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
+                <MealTile label="Abendessen" mealType="dinner" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
+                <MealTile label="Snacks" mealType="snack" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
               </div>
             </div>
             <div className="w-full max-w-sm">
@@ -215,11 +215,13 @@ function MealTile({
   mealType,
   favorites,
   recentFoods,
+  userRecipes,
 }: {
   label: string;
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   favorites: { label: string; metadata: Record<string, unknown> }[];
   recentFoods: Record<string, unknown>[];
+  userRecipes: UserRecipeRow[];
 }) {
   return (
     <QuickAddMeal
@@ -227,6 +229,7 @@ function MealTile({
       triggerLabel={`+ ${label}`}
       favorites={favorites}
       recentFoods={recentFoods}
+      userRecipes={userRecipes}
       triggerClassName="rounded-2xl bg-white/5 px-3 py-3 text-center text-xs font-black text-white transition hover:bg-brand-accent/15 hover:text-brand-accent"
     />
   );

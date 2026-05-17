@@ -30,7 +30,7 @@ type Estimate = { name: string; calories: number; protein: number; carbs: number
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 export function NutritionClient({ data }: { data: NutritionData }) {
-  const { profile, meals, totals, water, favorites, recentFoods } = data;
+  const { profile, meals, totals, water, favorites, recentFoods, userRecipes } = data;
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [pending, startTransition] = useTransition();
   const pushToast = useAppStore((state) => state.pushToast);
@@ -50,6 +50,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
           <QuickAddMeal
             favorites={favorites}
             recentFoods={recentFoods}
+            userRecipes={userRecipes}
             triggerClassName="rounded-2xl bg-brand-accent px-4 py-2 text-xs font-black text-brand-bg shadow-lg shadow-emerald-500/20"
           />
         </div>
@@ -105,6 +106,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
               <QuickAddMeal
                 favorites={favorites}
                 recentFoods={recentFoods}
+                userRecipes={userRecipes}
                 triggerClassName="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white"
               />
             </div>
