@@ -54,6 +54,7 @@ export async function logFoodAction(formData: FormData): Promise<ActionResult> {
       name,
       brand: text(formData, 'brand') || null,
       serving_label: text(formData, 'servingLabel', '100 g'),
+      image_url: text(formData, 'imageUrl') || null,
       calories: number(formData, 'calories'),
       protein: number(formData, 'protein'),
       carbs: number(formData, 'carbs'),
@@ -240,6 +241,34 @@ export async function logWorkoutAction(formData: FormData): Promise<ActionResult
     return { ok: true, message: `${name} saved.` };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Could not save workout.' };
+  }
+}
+
+export async function saveWorkoutTemplateAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const { supabase, userId: uid } = await userId();
+    const name = text(formData, 'name');
+    if (!name) return { ok: false, message: 'Plan name is required.' };
+    const focus = text(formData, 'focus', 'Custom plan');
+    const durationMin = Math.max(10, number(formData, 'durationMin', 45));
+    const exercises = JSON.parse(text(formData, 'exercises', '[]')) as { name: string; sets: string; muscleGroup?: string }[];
+    if (exercises.length === 0) return { ok: false, message: 'Add at least one exercise.' };
+
+    const { error } = await supabase.from('workout_templates').insert({
+      user_id: uid,
+      name,
+      focus,
+      duration_min: durationMin,
+      muscle_groups: [...new Set(exercises.map((exercise) => exercise.muscleGroup).filter(Boolean))],
+      exercises,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, message: error.message };
+
+    revalidatePath('/workouts');
+    return { ok: true, message: `${name} saved.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not save plan.' };
   }
 }
 

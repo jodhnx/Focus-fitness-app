@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Droplets, Heart, Plus, ScanLine, Search } from 'lucide-react';
-import { useMemo, useState, useTransition } from 'react';
+import Image from 'next/image';
+import { useDeferredValue, useMemo, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Field, SelectField } from '@/components/ui/form';
@@ -36,13 +37,15 @@ export function NutritionClient({ data }: { data: NutritionData }) {
   const [servings, setServings] = useState('1');
   const [amountGrams, setAmountGrams] = useState('100');
   const [pending, startTransition] = useTransition();
+  const deferredQuery = useDeferredValue(q);
   const pushToast = useAppStore((state) => state.pushToast);
   const { profile, meals, totals, water, favorites, recentFoods } = data;
 
   const { data: foods = [], isFetching } = useQuery({
-    queryKey: ['food', q],
-    queryFn: () => searchFood(q),
-    enabled: q.trim().length >= 2,
+    queryKey: ['food', deferredQuery],
+    queryFn: () => searchFood(deferredQuery),
+    enabled: deferredQuery.trim().length >= 2,
+    staleTime: 5 * 60_000,
   });
 
   const logMutation = useMutation({
@@ -157,7 +160,11 @@ export function NutritionClient({ data }: { data: NutritionData }) {
               {foods.map((item) => (
                 <GlassCard key={item.id} className="!p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-black/40">
+                        {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="80px" /> : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
                       <p className="font-bold text-white">{item.name}</p>
                       {item.brand ? <p className="text-xs text-zinc-500">{item.brand}</p> : null}
                       <div className="mt-2 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
@@ -169,6 +176,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                         <Nutrient label="sugar" value={`${item.sugar ?? 0}g`} />
                       </div>
                       <p className="mt-2 text-xs text-zinc-600">Serving: {item.servingLabel} · barcode {item.barcode ?? 'n/a'}</p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <button

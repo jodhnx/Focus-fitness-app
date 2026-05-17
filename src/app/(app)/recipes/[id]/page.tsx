@@ -3,9 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { GlassCard } from '@/components/ui/glass-card';
-import { Button } from '@/components/ui/button';
 import { findRecipe } from '@/data/recipes';
-import { logFoodAction, toggleFavoriteAction } from '../../actions';
+import { RecipeActions } from '../recipe-actions';
 
 export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,37 +51,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             <p className="text-[10px] text-zinc-500">fat</p>
           </div>
         </div>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <form
-            action={async (formData) => {
-              'use server';
-              await logFoodAction(formData);
-            }}
-          >
-            <input type="hidden" name="mealType" value={recipe.category === 'breakfast' ? 'breakfast' : recipe.category === 'snack' ? 'snack' : 'lunch'} />
-            <input type="hidden" name="servings" value="1" />
-            <input type="hidden" name="name" value={recipe.title} />
-            <input type="hidden" name="servingLabel" value="1 recipe" />
-            <input type="hidden" name="calories" value={recipe.calories} />
-            <input type="hidden" name="protein" value={recipe.protein} />
-            <input type="hidden" name="carbs" value={recipe.carbs} />
-            <input type="hidden" name="fat" value={recipe.fat} />
-            <input type="hidden" name="source" value="custom" />
-            <Button type="submit" className="w-full">Log recipe as meal</Button>
-          </form>
-          <form
-            action={async (formData) => {
-              'use server';
-              await toggleFavoriteAction(formData);
-            }}
-          >
-            <input type="hidden" name="favoriteType" value="recipe" />
-            <input type="hidden" name="targetId" value={recipe.id} />
-            <input type="hidden" name="label" value={recipe.title} />
-            <input type="hidden" name="meta_calories" value={recipe.calories} />
-            <Button type="submit" variant="secondary" className="w-full">Save favorite</Button>
-          </form>
-        </div>
+        <RecipeActions recipe={recipe} />
       </GlassCard>
 
       <GlassCard>

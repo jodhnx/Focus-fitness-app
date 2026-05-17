@@ -38,6 +38,7 @@ export type FoodCatalogItem = {
   name: string;
   brand?: string;
   servingLabel: string;
+  imageUrl?: string;
   calories: number;
   protein: number;
   carbs: number;

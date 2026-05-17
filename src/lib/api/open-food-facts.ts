@@ -18,6 +18,8 @@ type OffProduct = {
   product_name?: string;
   brands?: string;
   serving_size?: string;
+  image_url?: string;
+  image_front_url?: string;
   nutriments?: OffNutriments;
   countries_tags?: string[];
 };
@@ -33,6 +35,7 @@ function mapProduct(p: OffProduct): FoodCatalogItem | null {
     name,
     brand: p.brands?.split(',')[0]?.trim(),
     servingLabel: serving,
+    imageUrl: p.image_front_url ?? p.image_url,
     calories: calories > 0 ? calories : Math.round((n.proteins_100g ?? 0) * 4 + (n.carbohydrates_100g ?? 0) * 4 + (n.fat_100g ?? 0) * 9),
     protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
     carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
@@ -59,7 +62,7 @@ async function searchCountry(query: string, country: string, options?: { page?: 
     json: '1',
     page: String(page),
     page_size: String(pageSize),
-    fields: 'code,product_name,brands,serving_size,nutriments,countries_tags',
+    fields: 'code,product_name,brands,serving_size,nutriments,countries_tags,image_url,image_front_url',
     // Prefer DACH products
     tagtype_0: 'countries',
     tag_contains_0: 'contains',
@@ -112,7 +115,7 @@ export async function searchOpenFoodFactsGlobal(query: string): Promise<FoodCata
     action: 'process',
     json: '1',
     page_size: '24',
-    fields: 'code,product_name,brands,serving_size,nutriments,countries_tags',
+    fields: 'code,product_name,brands,serving_size,nutriments,countries_tags,image_url,image_front_url',
   });
 
   const res = await fetch(`${BASE}/cgi/search.pl?${params.toString()}`, {

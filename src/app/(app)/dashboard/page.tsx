@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { GlassCard } from '@/components/ui/glass-card';
 import { MetricCard, ProgressBar, ProgressRing } from '@/components/ui/metric-card';
+import { QuickAddMeal } from '@/components/nutrition/quick-add-meal';
 import { getDashboardData } from '@/lib/app-data';
 import { logWaterAction } from '../actions';
 
@@ -11,7 +12,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ onboarding?: string }>;
 }) {
   const sp = await searchParams;
-  const { profile, totals, latestWorkout, latestProgress, weeklyActivity, workouts, achievements } = await getDashboardData();
+  const { profile, totals, latestWorkout, latestProgress, weeklyActivity, workouts, achievements, favorites, recentFoods } = await getDashboardData();
 
   const calorieTarget = profile.calorie_target ?? 2200;
   const proteinTarget = profile.protein_target_g ?? 160;
@@ -54,9 +55,11 @@ export default async function DashboardPage({
               size={154}
             />
             <div className="space-y-2">
-              <Link href="/nutrition" className="block rounded-2xl bg-brand-accent px-5 py-3 text-center text-sm font-black text-brand-bg shadow-lg shadow-emerald-500/20">
-                Quick add meal
-              </Link>
+              <QuickAddMeal
+                favorites={favorites}
+                recentFoods={recentFoods}
+                triggerClassName="block rounded-2xl bg-brand-accent px-5 py-3 text-center text-sm font-black text-brand-bg shadow-lg shadow-emerald-500/20"
+              />
               <Link href="/workouts" className="block rounded-2xl border border-white/10 bg-black/25 px-5 py-3 text-center text-sm font-black text-white">
                 Start workout
               </Link>

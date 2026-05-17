@@ -149,6 +149,7 @@ create table public.foods (
   name text not null,
   brand text,
   serving_label text not null default '100 g',
+  image_url text,
   calories numeric not null default 0,
   protein numeric not null default 0,
   carbs numeric not null default 0,

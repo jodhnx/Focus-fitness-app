@@ -4,11 +4,24 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { exerciseCatalog } from '@/data/exercises';
 import { trainingPlans, templatesForPlan } from '@/data/training-plans';
 import { getCurrentUserAndProfile, type WorkoutRow } from '@/lib/app-data';
+import { CustomPlanBuilder } from './custom-plan-builder';
+import { WorkoutLogger } from './workout-logger';
 
 export default async function WorkoutsPage() {
   const { supabase, user } = await getCurrentUserAndProfile();
-  const { data } = await supabase.from('workouts').select('*').eq('user_id', user.id).order('started_at', { ascending: false }).limit(6);
+  const [{ data }, { data: customTemplates }] = await Promise.all([
+    supabase.from('workouts').select('*').eq('user_id', user.id).order('started_at', { ascending: false }).limit(6),
+    supabase.from('workout_templates').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(6),
+  ]);
   const workouts = (data ?? []) as WorkoutRow[];
+  const custom = (customTemplates ?? []) as {
+    id: string;
+    name: string;
+    focus: string;
+    duration_min: number;
+    muscle_groups: string[];
+    exercises: { name: string; sets: string; muscleGroup?: string }[];
+  }[];
   const muscles = [...new Set(exerciseCatalog.map((exercise) => exercise.muscleGroup))];
 
   return (
@@ -34,6 +47,35 @@ export default async function WorkoutsPage() {
           </div>
         )}
       </GlassCard>
+
+      <CustomPlanBuilder exerciseCatalog={exerciseCatalog} />
+
+      {custom.length > 0 ? (
+        <GlassCard>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Your plans</p>
+          <div className="mt-3 space-y-4">
+            {custom.map((template) => (
+              <div key={template.id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                <div className="mb-3">
+                  <p className="font-black text-white">{template.name}</p>
+                  <p className="text-sm text-zinc-400">{template.focus}</p>
+                  <p className="text-xs text-zinc-500">{template.duration_min} min · {template.muscle_groups?.join(', ')}</p>
+                </div>
+                <WorkoutLogger
+                  template={{
+                    id: template.id,
+                    name: template.name,
+                    focus: template.focus,
+                    durationMin: template.duration_min,
+                    exercises: template.exercises,
+                  }}
+                  exerciseCatalog={exerciseCatalog}
+                />
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      ) : null}
 
       <GlassCard>
         <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Exercise database</p>
