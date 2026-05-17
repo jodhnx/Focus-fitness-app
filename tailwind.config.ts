@@ -7,15 +7,15 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          bg: '#050506',
-          surface: '#111114',
-          elevated: '#18181C',
-          border: '#27272A',
-          accent: '#34D399',
-          accentMuted: 'rgba(52, 211, 153, 0.14)',
-          protein: '#38BDF8',
-          carbs: '#FBBF24',
-          fat: '#C084FC',
+          bg: 'rgb(var(--color-brand-bg) / <alpha-value>)',
+          surface: 'rgb(var(--color-brand-surface) / <alpha-value>)',
+          elevated: 'rgb(var(--color-brand-elevated) / <alpha-value>)',
+          border: 'rgb(var(--color-brand-border) / <alpha-value>)',
+          accent: 'rgb(var(--color-brand-accent) / <alpha-value>)',
+          accentMuted: 'rgb(var(--color-brand-accent) / 0.14)',
+          protein: 'rgb(var(--color-brand-protein) / <alpha-value>)',
+          carbs: 'rgb(var(--color-brand-carbs) / <alpha-value>)',
+          fat: 'rgb(var(--color-brand-fat) / <alpha-value>)',
         },
       },
       fontFamily: {

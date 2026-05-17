@@ -4,6 +4,42 @@
 
 :root {
   color-scheme: dark;
+  --color-brand-bg: 5 5 6;
+  --color-brand-surface: 17 17 20;
+  --color-brand-elevated: 24 24 28;
+  --color-brand-border: 39 39 42;
+  --color-brand-accent: 52 211 153;
+  --color-brand-protein: 56 189 248;
+  --color-brand-carbs: 251 191 36;
+  --color-brand-fat: 192 132 252;
+}
+
+[data-colorway='ocean'] {
+  --color-brand-accent: 56 189 248;
+  --color-brand-protein: 45 212 191;
+  --color-brand-carbs: 251 191 36;
+  --color-brand-fat: 129 140 248;
+}
+
+[data-colorway='violet'] {
+  --color-brand-accent: 167 139 250;
+  --color-brand-protein: 96 165 250;
+  --color-brand-carbs: 251 191 36;
+  --color-brand-fat: 244 114 182;
+}
+
+[data-colorway='rose'] {
+  --color-brand-accent: 251 113 133;
+  --color-brand-protein: 56 189 248;
+  --color-brand-carbs: 250 204 21;
+  --color-brand-fat: 216 180 254;
+}
+
+[data-colorway='amber'] {
+  --color-brand-accent: 251 191 36;
+  --color-brand-protein: 34 211 238;
+  --color-brand-carbs: 52 211 153;
+  --color-brand-fat: 251 113 133;
 }
 
 html {
@@ -22,7 +58,7 @@ body {
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
   background-image:
-    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(52, 211, 153, 0.12), transparent),
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgb(var(--color-brand-accent) / 0.12), transparent),
     radial-gradient(ellipse 80% 50% at 100% 0%, rgba(56, 189, 248, 0.06), transparent);
 }
 

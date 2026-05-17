@@ -126,6 +126,7 @@ create trigger profiles_set_updated_at
 create table public.user_settings (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   theme text not null default 'dark' check (theme in ('dark', 'light', 'system')),
+  colorway text not null default 'emerald' check (colorway in ('emerald', 'ocean', 'violet', 'rose', 'amber')),
   unit_system text not null default 'metric' check (unit_system in ('metric', 'imperial')),
   notifications_enabled boolean not null default true,
   marketing_emails_enabled boolean not null default false,

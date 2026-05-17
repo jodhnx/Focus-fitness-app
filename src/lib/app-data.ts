@@ -8,10 +8,14 @@ export type ProfileRow = {
   id: string;
   display_name: string;
   username: string | null;
+  age: number;
+  height_cm: number;
   calorie_target: number;
   protein_target_g: number;
   carbs_target_g: number;
   fat_target_g: number;
+  fiber_target_g: number;
+  workout_frequency: number;
   water_target_ml: number;
   water_goal_glasses: number;
   weight_kg: number;
@@ -19,6 +23,8 @@ export type ProfileRow = {
   unit_system: 'metric' | 'imperial';
   theme: 'dark' | 'light' | 'system';
   notifications_enabled: boolean;
+  haptics_enabled: boolean;
+  reduced_motion: boolean;
   xp: number;
   level: number;
   workout_streak_current: number;

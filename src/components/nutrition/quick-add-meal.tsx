@@ -125,15 +125,15 @@ export function QuickAddMeal({
         {triggerLabel}
       </button>
       {open ? (
-        <div className="fixed inset-0 z-50 bg-black/75 p-3 backdrop-blur-sm md:p-6">
-          <div className="mx-auto flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-brand-surface shadow-2xl">
-            <div className="border-b border-white/10 p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 p-3 pt-[calc(env(safe-area-inset-top)+3.25rem)] backdrop-blur-sm md:p-6">
+          <div className="mx-auto flex max-h-[calc(100dvh-4.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-brand-surface shadow-2xl md:max-h-[94vh] md:rounded-[2rem]">
+            <div className="border-b border-white/10 p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-brand-accent">Quick add meal</p>
                   <h2 className="text-xl font-black text-white">Search food</h2>
                 </div>
-                <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 p-2 text-zinc-300">
+                <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-zinc-100">
                   <X className="h-5 w-5" />
                 </button>
               </div>

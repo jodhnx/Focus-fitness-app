@@ -23,12 +23,12 @@ export function ProgressClient({ data }: { data: ProgressData }) {
   }));
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.18),transparent_32%),rgba(255,255,255,.045)] p-5 shadow-glass">
+    <div className="space-y-4 md:space-y-5">
+      <section className="rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgb(var(--color-brand-accent)/.18),transparent_32%),rgba(255,255,255,.045)] p-4 shadow-glass md:rounded-[2rem] md:p-5">
         <p className="text-xs font-black uppercase tracking-[0.28em] text-brand-accent">Progress</p>
-        <h1 className="mt-2 text-3xl font-black text-white">Deine Entwicklung</h1>
-        <p className="mt-1 text-sm text-zinc-400">Gewicht, Training, Kalorien, PRs und Streaks übersichtlich an einem Ort.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <h1 className="mt-1 text-2xl font-black text-white md:text-3xl">Deine Entwicklung</h1>
+        <p className="mt-1 hidden text-sm text-zinc-400 sm:block">Gewicht, Training, Kalorien, PRs und Streaks übersichtlich an einem Ort.</p>
+        <div className="mt-3 grid grid-cols-4 gap-2 md:mt-4">
           <HeroStat label="Gewicht" value={latest?.weight_kg ? `${latest.weight_kg}kg` : `${profile.weight_kg}kg`} />
           <HeroStat label="Ziel" value={`${profile.target_weight_kg}kg`} />
           <HeroStat label="Workouts" value={workouts.length} />
@@ -36,7 +36,7 @@ export function ProgressClient({ data }: { data: ProgressData }) {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="Weight" value={latest?.weight_kg ? `${latest.weight_kg} kg` : `${profile.weight_kg} kg`} sub={`target ${profile.target_weight_kg} kg`} />
         <MetricCard label="Body fat" value={latest?.body_fat_pct ? `${latest.body_fat_pct}%` : '--'} sub="latest entry" tone="muted" />
         <MetricCard label="Workouts" value={workouts.length} sub="recent sessions" tone="accent" />
@@ -111,8 +111,8 @@ export function ProgressClient({ data }: { data: ProgressData }) {
       </GlassCard>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <GlassCard glow>
-          <p className="text-sm font-bold text-white">Add progress entry</p>
+        <details className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-glass">
+          <summary className="cursor-pointer text-sm font-bold text-white">+ Progress Eintrag hinzufügen</summary>
           <form
             className="mt-3 grid gap-3 sm:grid-cols-2"
             action={async (formData) => {
@@ -131,7 +131,7 @@ export function ProgressClient({ data }: { data: ProgressData }) {
             <TextAreaField label="Notes" name="notes" className="sm:col-span-2" />
             <Button type="submit" className="sm:col-span-2">Save progress</Button>
           </form>
-        </GlassCard>
+        </details>
 
         <div className="space-y-4">
           <GlassCard>
@@ -171,9 +171,9 @@ export function ProgressClient({ data }: { data: ProgressData }) {
 
 function HeroStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
-      <p className="mt-1 text-xl font-black text-white">{value}</p>
+    <div className="rounded-xl border border-white/10 bg-black/25 p-2 md:rounded-2xl md:p-3">
+      <p className="truncate text-[9px] font-black uppercase tracking-wide text-zinc-500 md:text-[10px] md:tracking-widest">{label}</p>
+      <p className="mt-1 truncate text-base font-black text-white md:text-xl">{value}</p>
     </div>
   );
 }

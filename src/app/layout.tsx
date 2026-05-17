@@ -9,11 +9,11 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
 
 export const metadata: Metadata = {
   title: {
-    default: 'ApexFit — Nutrition & Training',
-    template: '%s | ApexFit',
+    default: 'Focus Nutrition & Training',
+    template: '%s | Focus',
   },
   description:
-    'Premium fitness and nutrition tracking — calories, macros, workouts, recipes, and progress.',
+    'Premium nutrition and training tracking — calories, macros, workouts, recipes, and progress.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon.svg',
@@ -23,14 +23,14 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'ApexFit',
+    title: 'Focus',
   },
   formatDetection: { telephone: false },
   other: {
     'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-status-bar-style': 'black-translucent',
-    'apple-mobile-web-app-title': 'ApexFit',
+    'apple-mobile-web-app-title': 'Focus',
     'msapplication-TileColor': '#050506',
   },
 };

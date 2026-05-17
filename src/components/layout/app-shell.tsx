@@ -34,10 +34,12 @@ export function AppShell({
   children,
   userEmail,
   nav,
+  colorway = 'emerald',
 }: {
   children: React.ReactNode;
   userEmail: string;
   nav: NavItem[];
+  colorway?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -59,11 +61,12 @@ export function AppShell({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-7xl overflow-x-hidden">
+    <div data-colorway={colorway} className="mx-auto flex min-h-dvh w-full max-w-7xl overflow-x-hidden">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-white/10 bg-black/20 px-3 py-6 backdrop-blur-xl md:flex">
-        <Link href="/dashboard" className="mb-8 px-2 text-lg font-black tracking-tight text-white">
-          Apex<span className="text-brand-accent">Fit</span>
+        <Link href="/dashboard" className="mb-8 px-2 leading-tight text-white">
+          <span className="block text-xl font-black tracking-tight">Focus</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-accent">Nutrition & Training</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
           {navItems.map((item) => {
@@ -106,10 +109,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col pb-24 md:pb-6">
-        <header className="pt-safe sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-brand-bg/85 px-4 py-3 backdrop-blur-xl md:hidden">
-          <Link href="/dashboard" className="text-lg font-black text-white">
-            Apex<span className="text-brand-accent">Fit</span>
-          </Link>
+        <header className="pt-safe sticky top-0 z-30 grid grid-cols-[44px_1fr_44px] items-center border-b border-white/10 bg-brand-bg/85 px-3 py-2 backdrop-blur-xl md:hidden">
           <button
             type="button"
             aria-label="Menu"
@@ -118,6 +118,13 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
+          <Link href="/dashboard" className="text-center leading-tight text-white">
+            <span className="block text-base font-black">Focus</span>
+            <span className="block text-[8px] font-black uppercase tracking-[0.2em] text-brand-accent">Nutrition & Training</span>
+          </Link>
+          <Link href="/settings" aria-label="Settings" className="justify-self-end rounded-xl border border-white/10 p-2 text-white">
+            <UserRound className="h-5 w-5" />
+          </Link>
         </header>
 
         <main className="flex-1 overflow-x-hidden px-3 py-4 md:px-8 md:py-7">

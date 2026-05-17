@@ -1,7 +1,7 @@
 {
-  "name": "ApexFit",
-  "short_name": "ApexFit",
-  "description": "Premium fitness and nutrition tracking: meals, macros, workouts, recipes and progress.",
+  "name": "Focus Nutrition & Training",
+  "short_name": "Focus",
+  "description": "Premium nutrition and training tracking: meals, macros, workouts, recipes and progress.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

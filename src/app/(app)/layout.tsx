@@ -32,8 +32,11 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     redirect('/onboarding');
   }
 
+  const { data: settings } = await supabase.from('user_settings').select('colorway').eq('user_id', user.id).maybeSingle();
+  const colorway = String((settings as { colorway?: string } | null)?.colorway ?? 'emerald');
+
   return (
-    <AppShell userEmail={user.email ?? ''} nav={nav}>
+    <AppShell userEmail={user.email ?? ''} nav={nav} colorway={colorway}>
       {children}
     </AppShell>
   );
