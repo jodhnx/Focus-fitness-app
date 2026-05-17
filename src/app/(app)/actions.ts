@@ -68,8 +68,14 @@ export async function logFoodAction(formData: FormData): Promise<ActionResult> {
       updated_at: new Date().toISOString(),
     };
 
-    const { data: food, error: foodError } = await supabase.from('foods').insert(foodPayload).select('id').single();
-    if (foodError) return { ok: false, message: foodError.message };
+    let { data: food, error: foodError } = await supabase.from('foods').insert(foodPayload).select('id').single();
+    if (foodError && /image_url|schema cache/i.test(foodError.message)) {
+      const { image_url: _imageUrl, ...fallbackFoodPayload } = foodPayload;
+      const retry = await supabase.from('foods').insert(fallbackFoodPayload).select('id').single();
+      food = retry.data;
+      foodError = retry.error;
+    }
+    if (foodError || !food) return { ok: false, message: foodError?.message ?? 'Could not save food.' };
 
     const { data: meal, error: mealError } = await supabase
       .from('meals')
@@ -269,6 +275,88 @@ export async function saveWorkoutTemplateAction(formData: FormData): Promise<Act
     return { ok: true, message: `${name} saved.` };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : 'Could not save plan.' };
+  }
+}
+
+export async function saveRecipeAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const { supabase, userId: uid } = await userId();
+    const title = text(formData, 'title');
+    if (!title) return { ok: false, message: 'Recipe title is required.' };
+    const ingredients = text(formData, 'ingredients')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const steps = text(formData, 'steps')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const { data: recipe, error } = await supabase
+      .from('recipes')
+      .insert({
+        user_id: uid,
+        title,
+        description: text(formData, 'description', 'Custom recipe'),
+        category: text(formData, 'category', 'lunch'),
+        calories: Math.max(0, number(formData, 'calories')),
+        protein: Math.max(0, number(formData, 'protein')),
+        carbs: Math.max(0, number(formData, 'carbs')),
+        fat: Math.max(0, number(formData, 'fat')),
+        prep_min: Math.max(0, number(formData, 'prepMin', 10)),
+        cook_min: Math.max(0, number(formData, 'cookMin', 10)),
+        difficulty: text(formData, 'difficulty', 'easy'),
+        tags: text(formData, 'tags')
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        image_url: text(formData, 'imageUrl'),
+        steps,
+        is_public: false,
+        updated_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+    if (error || !recipe) return { ok: false, message: error?.message ?? 'Could not save recipe.' };
+
+    if (ingredients.length > 0) {
+      await supabase.from('recipe_ingredients').insert(
+        ingredients.map((ingredient, position) => ({
+          recipe_id: (recipe as { id: string }).id,
+          position,
+          ingredient,
+        }))
+      );
+    }
+
+    revalidatePath('/recipes');
+    return { ok: true, message: `${title} saved.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not save recipe.' };
+  }
+}
+
+export async function estimateFoodPhotoAction(formData: FormData): Promise<
+  ActionResult & {
+    estimate?: { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string };
+  }
+> {
+  try {
+    await userId();
+    const label = text(formData, 'description') || (formData.get('photo') instanceof File ? (formData.get('photo') as File).name : 'Food plate');
+    const normalized = label.toLowerCase();
+    const estimate =
+      normalized.includes('pizza') || normalized.includes('burger')
+        ? { name: label, calories: 650, protein: 28, carbs: 72, fat: 28, servingLabel: '1 portion' }
+        : normalized.includes('salad') || normalized.includes('salat')
+          ? { name: label, calories: 320, protein: 22, carbs: 24, fat: 14, servingLabel: '1 bowl' }
+          : normalized.includes('oat') || normalized.includes('hafer')
+            ? { name: label, calories: 380, protein: 16, carbs: 56, fat: 10, servingLabel: '1 bowl' }
+            : { name: label, calories: 520, protein: 32, carbs: 48, fat: 18, servingLabel: '1 serving' };
+
+    return { ok: true, message: 'Food estimate ready. Review before logging.', estimate };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not estimate food.' };
   }
 }
 

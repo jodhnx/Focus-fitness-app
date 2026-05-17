@@ -4,11 +4,44 @@ import { notFound } from 'next/navigation';
 
 import { GlassCard } from '@/components/ui/glass-card';
 import { findRecipe } from '@/data/recipes';
+import { getCurrentUserAndProfile } from '@/lib/app-data';
+import type { Recipe, RecipeCategory, RecipeDifficulty } from '@/types/domain';
 import { RecipeActions } from '../recipe-actions';
+
+const categories = ['breakfast', 'lunch', 'dinner', 'snack', 'meal-prep', 'high-protein', 'low-calorie', 'bulk'];
+const difficulties = ['easy', 'medium', 'hard'];
 
 export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const recipe = findRecipe(id);
+  let recipe: Recipe | undefined = findRecipe(id);
+  if (!recipe) {
+    const { supabase, user } = await getCurrentUserAndProfile();
+    const [{ data }, { data: ingredientRows }] = await Promise.all([
+      supabase.from('recipes').select('*').eq('id', id).eq('user_id', user.id).maybeSingle(),
+      supabase.from('recipe_ingredients').select('ingredient').eq('recipe_id', id).order('position', { ascending: true }),
+    ]);
+    if (data) {
+      const category = String(data.category ?? 'lunch');
+      const difficulty = String(data.difficulty ?? 'easy');
+      recipe = {
+        id: String(data.id),
+        title: String(data.title),
+        description: String(data.description ?? 'Custom recipe'),
+        category: (categories.includes(category) ? category : 'lunch') as RecipeCategory,
+        difficulty: (difficulties.includes(difficulty) ? difficulty : 'easy') as RecipeDifficulty,
+        calories: Number(data.calories ?? 0),
+        protein: Number(data.protein ?? 0),
+        carbs: Number(data.carbs ?? 0),
+        fat: Number(data.fat ?? 0),
+        prepMin: Number(data.prep_min ?? 0),
+        cookMin: Number(data.cook_min ?? 0),
+        tags: Array.isArray(data.tags) ? data.tags : ['custom'],
+        imageUrl: String(data.image_url || '/icons/icon.svg'),
+        ingredients: (ingredientRows ?? []).map((row) => String(row.ingredient)),
+        steps: Array.isArray(data.steps) ? data.steps : [],
+      };
+    }
+  }
   if (!recipe) notFound();
 
   return (

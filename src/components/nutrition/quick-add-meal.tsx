@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Heart, Loader2, Search, X } from 'lucide-react';
+import { Apple, Heart, Loader2, Search, X } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, useTransition } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -42,6 +42,8 @@ export function QuickAddMeal({
   const [mealType, setMealType] = useState<MealType>('breakfast');
   const [grams, setGrams] = useState('100');
   const [servings, setServings] = useState('1');
+  const [mode, setMode] = useState<'custom' | 'serving' | 'package'>('custom');
+  const [packageGrams, setPackageGrams] = useState('250');
   const [pending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -67,7 +69,7 @@ export function QuickAddMeal({
     const formData = new FormData();
     formData.set('mealType', mealType);
     formData.set('servings', servings);
-    formData.set('amountGrams', grams);
+    formData.set('amountGrams', mode === 'package' ? packageGrams : mode === 'serving' ? '0' : grams);
     formData.set('servingGrams', String(gramsFromServingLabel(item.servingLabel)));
     formData.set('name', item.name);
     formData.set('brand', item.brand ?? '');
@@ -103,7 +105,7 @@ export function QuickAddMeal({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_140px_100px_100px]">
+              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_132px_112px_112px]">
                 <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
                   <Search className="h-4 w-4 text-zinc-500" />
                   <input
@@ -121,7 +123,18 @@ export function QuickAddMeal({
                     </option>
                   ))}
                 </SelectField>
-                <Field label="Grams" name="grams" type="number" value={grams} onChange={(event) => setGrams(event.target.value)} />
+                <SelectField label="Amount" name="mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
+                  <option value="custom">custom g</option>
+                  <option value="serving">serving</option>
+                  <option value="package">package</option>
+                </SelectField>
+                <Field
+                  label={mode === 'package' ? 'Package g' : 'Grams'}
+                  name="grams"
+                  type="number"
+                  value={mode === 'package' ? packageGrams : grams}
+                  onChange={(event) => (mode === 'package' ? setPackageGrams(event.target.value) : setGrams(event.target.value))}
+                />
                 <Field label="Servings" name="servings" type="number" step="0.1" value={servings} onChange={(event) => setServings(event.target.value)} />
               </div>
               {pills.length > 0 ? (
@@ -150,16 +163,16 @@ export function QuickAddMeal({
               ) : (
                 <div className="space-y-3">
                   {data.map((item) => {
-                    const multiplier = Math.max(1, Number(grams) || 100) / 100;
+                    const servingGrams = gramsFromServingLabel(item.servingLabel);
+                    const displayGrams = mode === 'package' ? Number(packageGrams) || 250 : mode === 'serving' ? (Number(servings) || 1) * servingGrams : Number(grams) || 100;
+                    const multiplier = Math.max(1, displayGrams) / 100;
                     return (
                       <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                         <div className="flex gap-3">
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-black/40">
-                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="80px" /> : null}
-                          </div>
+                          <ProductImage src={item.imageUrl} alt={item.name} />
                           <div className="min-w-0 flex-1">
                             <p className="line-clamp-2 font-bold text-white">{item.name}</p>
-                            <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel}</p>
+                            <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel} · {Math.round(displayGrams)}g selected</p>
                             <div className="mt-2 grid grid-cols-3 gap-1 text-[11px] sm:grid-cols-6">
                               <N label="kcal" value={Math.round(item.calories * multiplier)} />
                               <N label="P" value={`${Math.round(item.protein * multiplier)}g`} />
@@ -203,6 +216,14 @@ export function QuickAddMeal({
         </div>
       ) : null}
     </>
+  );
+}
+
+function ProductImage({ src, alt }: { src?: string; alt: string }) {
+  return (
+    <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/15 to-cyan-500/10">
+      {src ? <Image src={src} alt={alt} fill className="object-cover" sizes="80px" /> : <Apple className="h-7 w-7 text-brand-accent" />}
+    </div>
   );
 }
 

@@ -1,115 +1,76 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Droplets, Heart, Plus, ScanLine, Search } from 'lucide-react';
-import Image from 'next/image';
-import { useDeferredValue, useMemo, useState, useTransition } from 'react';
+import { Camera, Droplets, Plus, Sparkles } from 'lucide-react';
+import { useState, useTransition } from 'react';
 
+import { QuickAddMeal } from '@/components/nutrition/quick-add-meal';
 import { Button } from '@/components/ui/button';
-import { Field, SelectField } from '@/components/ui/form';
+import { Field, SelectField, TextAreaField } from '@/components/ui/form';
 import { GlassCard } from '@/components/ui/glass-card';
-import { MetricCard, ProgressBar } from '@/components/ui/metric-card';
+import { ProgressBar, ProgressRing } from '@/components/ui/metric-card';
 import type { getNutritionData } from '@/lib/app-data';
 import { useAppStore } from '@/stores/app-store';
-import type { FoodCatalogItem, MealType } from '@/types/domain';
+import type { MealType } from '@/types/domain';
 
-import { logFoodAction, logWaterAction, toggleFavoriteAction } from '../actions';
+import { estimateFoodPhotoAction, logFoodAction, logWaterAction, saveRecipeAction } from '../actions';
 
 type NutritionData = Awaited<ReturnType<typeof getNutritionData>>;
+type Estimate = { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string };
+
 const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
-async function searchFood(q: string): Promise<FoodCatalogItem[]> {
-  if (q.trim().length < 2) return [];
-  const param = /^\d{6,}$/.test(q.trim()) ? `barcode=${encodeURIComponent(q.trim())}` : `q=${encodeURIComponent(q)}`;
-  const res = await fetch(`/api/food/search?${param}`);
-  if (!res.ok) return [];
-  return res.json();
-}
-
-function gramsFromServingLabel(label: string) {
-  const match = label.match(/(\d+(?:[.,]\d+)?)\s*g/i);
-  return match?.[1] ? Number(match[1].replace(',', '.')) : 100;
-}
-
 export function NutritionClient({ data }: { data: NutritionData }) {
-  const [q, setQ] = useState('');
-  const [mealType, setMealType] = useState<MealType>('breakfast');
-  const [servings, setServings] = useState('1');
-  const [amountGrams, setAmountGrams] = useState('100');
-  const [pending, startTransition] = useTransition();
-  const deferredQuery = useDeferredValue(q);
-  const pushToast = useAppStore((state) => state.pushToast);
   const { profile, meals, totals, water, favorites, recentFoods } = data;
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [pending, startTransition] = useTransition();
+  const pushToast = useAppStore((state) => state.pushToast);
 
-  const { data: foods = [], isFetching } = useQuery({
-    queryKey: ['food', deferredQuery],
-    queryFn: () => searchFood(deferredQuery),
-    enabled: deferredQuery.trim().length >= 2,
-    staleTime: 5 * 60_000,
-  });
-
-  const logMutation = useMutation({
-    mutationFn: async (formData: FormData) => logFoodAction(formData),
-    onSuccess: (result) => pushToast({ title: result.ok ? 'Food logged' : 'Food error', body: result.message, tone: result.ok ? 'success' : 'error' }),
-  });
-
-  const grouped = useMemo(
-    () => Object.fromEntries(mealTypes.map((type) => [type, meals.filter((meal) => meal.meal_type === type)])) as Record<MealType, typeof meals>,
-    [meals]
-  );
-
-  function submitFood(item: FoodCatalogItem, selectedMealType = mealType) {
-    const formData = new FormData();
-    formData.set('mealType', selectedMealType);
-    formData.set('servings', servings);
-    formData.set('amountGrams', amountGrams);
-    formData.set('servingGrams', String(gramsFromServingLabel(item.servingLabel)));
-    formData.set('name', item.name);
-    formData.set('brand', item.brand ?? '');
-    formData.set('servingLabel', item.servingLabel);
-    formData.set('calories', String(item.calories));
-    formData.set('protein', String(item.protein));
-    formData.set('carbs', String(item.carbs));
-    formData.set('fat', String(item.fat));
-    formData.set('fiber', String(item.fiber ?? 0));
-    formData.set('sugar', String(item.sugar ?? 0));
-    formData.set('sodiumMg', String(item.sodiumMg ?? 0));
-    formData.set('barcode', item.barcode ?? '');
-    formData.set('source', item.source ?? 'custom');
-    logMutation.mutate(formData);
-  }
+  const caloriesRemaining = Math.max(0, profile.calorie_target - totals.calories);
+  const caloriePct = Math.round((totals.calories / Math.max(1, profile.calorie_target)) * 100);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white">Nutrition</h1>
-        <p className="text-sm text-zinc-400">Food search, barcode/manual lookup, custom foods, diary, macros and water.</p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Calories" value={Math.round(totals.calories)} sub={`of ${profile.calorie_target} kcal`} />
-        <MetricCard label="Protein" value={`${Math.round(totals.protein)}g`} sub={`of ${profile.protein_target_g}g`} tone="protein" />
-        <MetricCard label="Carbs" value={`${Math.round(totals.carbs)}g`} sub={`of ${profile.carbs_target_g}g`} tone="carbs" />
-        <MetricCard label="Fat" value={`${Math.round(totals.fat)}g`} sub={`of ${profile.fat_target_g}g`} tone="fat" />
-      </div>
-
-      <GlassCard>
-        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Macro split today</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <MacroPill label="Protein" value={totals.protein} max={profile.protein_target_g} className="bg-brand-protein" />
-          <MacroPill label="Carbs" value={totals.carbs} max={profile.carbs_target_g} className="bg-brand-carbs" />
-          <MacroPill label="Fat" value={totals.fat} max={profile.fat_target_g} className="bg-brand-fat" />
+    <div className="space-y-4 md:space-y-5">
+      <section className="rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.2),transparent_35%),rgba(255,255,255,.045)] p-4 shadow-glass md:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-accent">Nutrition</p>
+            <h1 className="mt-1 text-2xl font-black text-white">Today&apos;s fuel</h1>
+            <p className="text-xs text-zinc-400">Fast food search, diary, recipes and scanner.</p>
+          </div>
+          <QuickAddMeal
+            favorites={favorites}
+            recentFoods={recentFoods}
+            triggerClassName="rounded-2xl bg-brand-accent px-4 py-2 text-xs font-black text-brand-bg shadow-lg shadow-emerald-500/20"
+          />
         </div>
-      </GlassCard>
 
-      <GlassCard glow>
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="font-bold text-white">Water</span>
-          <span className="text-zinc-400">{totals.waterMl} / {profile.water_target_ml} ml</span>
+        <div className="mt-4 grid gap-4 sm:grid-cols-[140px_1fr] sm:items-center">
+          <div className="flex justify-center">
+            <ProgressRing value={totals.calories} max={profile.calorie_target} label={`${caloriePct}%`} sub="calories" size={116} stroke={10} />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <TinyStat label="Eaten" value={Math.round(totals.calories)} sub="kcal" />
+            <TinyStat label="Remaining" value={Math.round(caloriesRemaining)} sub="kcal" />
+            <TinyStat label="Fiber" value={`${Math.round(totals.fiber)}g`} sub="today" />
+            <TinyStat label="Water" value={`${totals.waterMl}`} sub={`/ ${profile.water_target_ml} ml`} />
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MacroCard label="Protein" value={totals.protein} max={profile.protein_target_g} color="bg-brand-protein" />
+        <MacroCard label="Carbs" value={totals.carbs} max={profile.carbs_target_g} color="bg-brand-carbs" />
+        <MacroCard label="Fats" value={totals.fat} max={profile.fat_target_g} color="bg-brand-fat" />
+      </div>
+
+      <GlassCard className="!p-4">
+        <div className="mb-2 flex items-center justify-between text-xs">
+          <span className="font-black uppercase tracking-widest text-zinc-500">Water</span>
+          <span className="font-semibold text-zinc-300">{water.length} logs</span>
         </div>
         <ProgressBar value={totals.waterMl} max={profile.water_target_ml} />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[250, 500, 750].map((amount) => (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {[250, 500, 750, 1000].map((amount) => (
             <form
               key={amount}
               action={async (formData) => {
@@ -118,166 +79,172 @@ export function NutritionClient({ data }: { data: NutritionData }) {
               }}
             >
               <input type="hidden" name="volumeMl" value={amount} />
-              <Button type="submit" variant="secondary" className="!py-2">
-                <Droplets className="h-4 w-4" /> +{amount} ml
+              <Button type="submit" variant="secondary" className="shrink-0 !px-3 !py-2 text-xs">
+                <Droplets className="h-3.5 w-3.5" /> {amount}ml
               </Button>
             </form>
           ))}
-          <span className="self-center text-xs text-zinc-500">{water.length} entries today</span>
         </div>
       </GlassCard>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
-          <GlassCard>
-            <div className="grid gap-3 md:grid-cols-[1fr_150px_120px_120px]">
-              <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-                {/^\d{6,}$/.test(q) ? <ScanLine className="h-4 w-4 text-brand-accent" /> : <Search className="h-4 w-4 text-zinc-500" />}
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search or enter barcode e.g. Haferflocken, Skyr, 5449000000996"
-                  className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-                />
-              </label>
-              <SelectField label="Meal" name="mealType" value={mealType} onChange={(e) => setMealType(e.target.value as MealType)}>
-                {mealTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </SelectField>
-              <Field label="Servings" name="servings" type="number" min={0.1} step={0.1} value={servings} onChange={(e) => setServings(e.target.value)} />
-              <Field label="Grams" name="amountGrams" type="number" min={1} step={1} value={amountGrams} onChange={(e) => setAmountGrams(e.target.value)} />
+          <GlassCard className="!p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Diary</p>
+              <QuickAddMeal
+                favorites={favorites}
+                recentFoods={recentFoods}
+                triggerClassName="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white"
+              />
             </div>
-            <p className="mt-2 text-xs text-zinc-500">
-              {isFetching ? 'Searching Open Food Facts...' : 'Austrian/German products are prioritized when available. Barcode entry works as a web fallback.'}
-            </p>
+            <div className="mt-3 space-y-3">
+              {mealTypes.map((type) => {
+                const items = meals.filter((meal) => meal.meal_type === type).flatMap((meal) => meal.meal_items);
+                const kcal = items.reduce((sum, item) => sum + Number(item.calories ?? 0), 0);
+                return (
+                  <section key={type} className="rounded-2xl bg-black/25 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-black capitalize text-white">{type}</p>
+                      <p className="text-xs font-bold text-brand-accent">{Math.round(kcal)} kcal</p>
+                    </div>
+                    {items.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No foods logged yet.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-zinc-100">{item.name_snapshot}</p>
+                              <p className="text-[11px] text-zinc-500">P{Math.round(item.protein)} C{Math.round(item.carbs)} F{Math.round(item.fat)}</p>
+                            </div>
+                            <p className="shrink-0 text-xs font-bold text-zinc-300">{Math.round(item.calories)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
           </GlassCard>
 
-          {foods.length > 0 ? (
-            <div className="space-y-2">
-              {foods.map((item) => (
-                <GlassCard key={item.id} className="!p-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                    <div className="flex min-w-0 gap-3">
-                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-black/40">
-                        {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="80px" /> : null}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                      <p className="font-bold text-white">{item.name}</p>
-                      {item.brand ? <p className="text-xs text-zinc-500">{item.brand}</p> : null}
-                      <div className="mt-2 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
-                        <Nutrient label="kcal" value={item.calories} />
-                        <Nutrient label="protein" value={`${item.protein}g`} />
-                        <Nutrient label="carbs" value={`${item.carbs}g`} />
-                        <Nutrient label="fat" value={`${item.fat}g`} />
-                        <Nutrient label="fiber" value={`${item.fiber ?? 0}g`} />
-                        <Nutrient label="sugar" value={`${item.sugar ?? 0}g`} />
-                      </div>
-                      <p className="mt-2 text-xs text-zinc-600">Serving: {item.servingLabel} · barcode {item.barcode ?? 'n/a'}</p>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          startTransition(async () => {
-                            const formData = new FormData();
-                            formData.set('favoriteType', 'food');
-                            formData.set('targetId', item.id);
-                            formData.set('label', item.name);
-                            formData.set('meta_calories', String(item.calories));
-                            formData.set('meta_protein', String(item.protein));
-                            const result = await toggleFavoriteAction(formData);
-                            pushToast({ title: result.ok ? 'Favorite updated' : 'Favorite error', body: result.message, tone: result.ok ? 'success' : 'error' });
-                          })
-                        }
-                        className="rounded-lg border border-white/10 p-2 text-zinc-300"
-                      >
-                        <Heart className="h-4 w-4" />
-                      </button>
-                      <Button type="button" onClick={() => submitFood(item)} disabled={logMutation.isPending}>
-                        Add as meal
-                      </Button>
-                    </div>
-                  </div>
-                </GlassCard>
-              ))}
-            </div>
-          ) : null}
-
-          <GlassCard>
-            <p className="text-sm font-bold text-white">Add custom food</p>
+          <GlassCard className="!p-4">
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Manual custom food</p>
             <form
-              className="mt-3 grid gap-3 sm:grid-cols-2"
+              className="mt-3 grid gap-2 sm:grid-cols-2"
               action={async (formData) => {
                 const result = await logFoodAction(formData);
-                pushToast({ title: result.ok ? 'Custom food logged' : 'Food error', body: result.message, tone: result.ok ? 'success' : 'error' });
+                pushToast({ title: result.ok ? 'Food logged' : 'Food error', body: result.message, tone: result.ok ? 'success' : 'error' });
               }}
             >
-              <SelectField label="Meal" name="mealType" defaultValue={mealType}>
+              <SelectField label="Meal" name="mealType" defaultValue="lunch">
                 {mealTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </SelectField>
               <Field label="Name" name="name" required />
-              <Field label="Serving label" name="servingLabel" defaultValue="1 serving" />
-              <Field label="Serving grams" name="servingGrams" type="number" defaultValue="100" />
-              <Field label="Amount grams" name="amountGrams" type="number" defaultValue="100" />
-              <Field label="Servings" name="servings" type="number" defaultValue="1" step="0.1" />
+              <Field label="Grams" name="amountGrams" type="number" defaultValue="100" />
+              <Field label="Serving" name="servingLabel" defaultValue="100 g" />
+              <input type="hidden" name="servingGrams" value="100" />
+              <input type="hidden" name="servings" value="1" />
               <Field label="Calories" name="calories" type="number" required />
               <Field label="Protein" name="protein" type="number" step="0.1" required />
               <Field label="Carbs" name="carbs" type="number" step="0.1" required />
               <Field label="Fat" name="fat" type="number" step="0.1" required />
               <Field label="Fiber" name="fiber" type="number" step="0.1" />
-              <Field label="Sugar" name="sugar" type="number" step="0.1" />
               <input type="hidden" name="source" value="custom" />
               <Button type="submit" className="sm:col-span-2">
-                <Plus className="h-4 w-4" /> Save and log food
+                <Plus className="h-4 w-4" /> Add custom food
               </Button>
             </form>
           </GlassCard>
         </div>
 
         <div className="space-y-4">
-          <GlassCard>
-            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Today&apos;s diary</p>
-            <div className="mt-3 space-y-4">
-              {mealTypes.map((type) => (
-                <section key={type}>
-                  <p className="text-sm font-black capitalize text-white">{type}</p>
-                  <div className="mt-2 space-y-2">
-                    {grouped[type].flatMap((meal) => meal.meal_items).length === 0 ? (
-                      <p className="rounded-xl bg-white/5 p-3 text-xs text-zinc-500">No foods logged.</p>
-                    ) : (
-                      grouped[type].flatMap((meal) =>
-                        meal.meal_items.map((item) => (
-                          <div key={item.id} className="rounded-xl bg-black/30 p-3">
-                            <p className="text-sm font-semibold text-zinc-100">{item.name_snapshot}</p>
-                            <p className="text-xs text-zinc-500">
-                              {Math.round(item.calories)} kcal · P{Math.round(item.protein)} C{Math.round(item.carbs)} F{Math.round(item.fat)}
-                            </p>
-                          </div>
-                        ))
-                      )
-                    )}
-                  </div>
-                </section>
-              ))}
-            </div>
+          <GlassCard className="!p-4">
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">AI food scanner</p>
+            <p className="mt-1 text-xs text-zinc-400">Upload a meal/product photo and add a short description for a quick estimate.</p>
+            <form
+              className="mt-3 space-y-2"
+              action={(formData) =>
+                startTransition(async () => {
+                  const result = await estimateFoodPhotoAction(formData);
+                  if (result.ok && result.estimate) setEstimate(result.estimate);
+                  pushToast({ title: result.ok ? 'Estimate ready' : 'Scanner error', body: result.message, tone: result.ok ? 'success' : 'error' });
+                })
+              }
+            >
+              <Field label="Photo" name="photo" type="file" accept="image/*" capture="environment" />
+              <Field label="Description" name="description" placeholder="chicken rice bowl, pizza slice..." />
+              <Button type="submit" disabled={pending} variant="secondary" className="w-full">
+                <Camera className="h-4 w-4" /> Analyze food
+              </Button>
+            </form>
+            {estimate ? (
+              <form
+                className="mt-3 rounded-2xl bg-black/30 p-3"
+                action={async (formData) => {
+                  const result = await logFoodAction(formData);
+                  pushToast({ title: result.ok ? 'Estimate logged' : 'Food error', body: result.message, tone: result.ok ? 'success' : 'error' });
+                }}
+              >
+                <p className="font-bold text-white">{estimate.name}</p>
+                <p className="text-xs text-zinc-400">{estimate.calories} kcal · P{estimate.protein} C{estimate.carbs} F{estimate.fat}</p>
+                <input type="hidden" name="mealType" value="lunch" />
+                <input type="hidden" name="name" value={estimate.name} />
+                <input type="hidden" name="servingLabel" value={estimate.servingLabel} />
+                <input type="hidden" name="calories" value={estimate.calories} />
+                <input type="hidden" name="protein" value={estimate.protein} />
+                <input type="hidden" name="carbs" value={estimate.carbs} />
+                <input type="hidden" name="fat" value={estimate.fat} />
+                <input type="hidden" name="servingGrams" value="100" />
+                <Field label="Grams" name="amountGrams" type="number" defaultValue="100" className="mt-2" />
+                <input type="hidden" name="servings" value="1" />
+                <Button type="submit" className="mt-2 w-full">Add estimate to diary</Button>
+              </form>
+            ) : null}
           </GlassCard>
 
-          <GlassCard>
-            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Favorites & recents</p>
-            <div className="mt-3 space-y-2">
-              {[...favorites.map((f) => f.label), ...recentFoods.map((f) => String(f.name ?? 'Food'))].slice(0, 8).map((label, index) => (
-                <p key={`${label}-${index}`} className="rounded-xl bg-white/5 px-3 py-2 text-sm text-zinc-300">
-                  {label}
-                </p>
+          <GlassCard className="!p-4">
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Create recipe</p>
+            <form
+              className="mt-3 space-y-2"
+              action={async (formData) => {
+                const result = await saveRecipeAction(formData);
+                pushToast({ title: result.ok ? 'Recipe saved' : 'Recipe error', body: result.message, tone: result.ok ? 'success' : 'error' });
+              }}
+            >
+              <Field label="Title" name="title" required />
+              <SelectField label="Category" name="category" defaultValue="lunch">
+                <option value="breakfast">breakfast</option>
+                <option value="lunch">lunch</option>
+                <option value="dinner">dinner</option>
+                <option value="snack">snack</option>
+              </SelectField>
+              <Field label="Image URL" name="imageUrl" />
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Calories" name="calories" type="number" />
+                <Field label="Protein" name="protein" type="number" />
+                <Field label="Carbs" name="carbs" type="number" />
+                <Field label="Fat" name="fat" type="number" />
+              </div>
+              <TextAreaField label="Ingredients" name="ingredients" placeholder="One ingredient per line" />
+              <TextAreaField label="Steps" name="steps" placeholder="One step per line" />
+              <input type="hidden" name="difficulty" value="easy" />
+              <input type="hidden" name="prepMin" value="10" />
+              <input type="hidden" name="cookMin" value="15" />
+              <Button type="submit" variant="secondary" className="w-full">
+                <Sparkles className="h-4 w-4" /> Save recipe
+              </Button>
+            </form>
+          </GlassCard>
+
+          <GlassCard className="!p-4">
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Favorites & recents</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[...favorites.map((f) => f.label), ...recentFoods.map((f) => String(f.name ?? 'Food'))].slice(0, 10).map((label, index) => (
+                <span key={`${label}-${index}`} className="rounded-full bg-white/5 px-3 py-1 text-xs text-zinc-300">{label}</span>
               ))}
             </div>
           </GlassCard>
@@ -287,25 +254,26 @@ export function NutritionClient({ data }: { data: NutritionData }) {
   );
 }
 
-function Nutrient({ label, value }: { label: string; value: string | number }) {
+function TinyStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-xl bg-black/30 px-2 py-2">
-      <p className="font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500">{label}</p>
+    <div className="rounded-2xl bg-black/25 p-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+      <p className="mt-1 text-xl font-black text-white">{value}</p>
+      <p className="text-[11px] text-zinc-500">{sub}</p>
     </div>
   );
 }
 
-function MacroPill({ label, value, max, className }: { label: string; value: number; max: number; className: string }) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+function MacroCard({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = Math.min(100, Math.round((value / Math.max(1, max)) * 100));
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-bold text-white">{label}</span>
-        <span className="text-zinc-400">{Math.round(value)} / {max}g</span>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-black uppercase tracking-widest text-zinc-500">{label}</p>
+        <p className="text-xs font-bold text-zinc-300">{Math.round(value)} / {max}g</p>
       </div>
-      <div className="mt-3 h-2 rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${className}`} style={{ width: `${pct}%` }} />
+      <div className="mt-3 h-1.5 rounded-full bg-white/10">
+        <div className={`${color} h-full rounded-full`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

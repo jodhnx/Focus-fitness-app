@@ -1,7 +1,7 @@
 'use client';
 
 import { Timer, Plus, Trash2 } from 'lucide-react';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Field, SelectField, TextAreaField } from '@/components/ui/form';
@@ -27,6 +27,7 @@ type ExerciseRow = { name: string; muscleGroup?: string; notes?: string; sets: S
 
 export function WorkoutLogger({ template, exerciseCatalog = [] }: { template: Template; exerciseCatalog?: ExerciseCatalogItem[] }) {
   const [rest, setRest] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const [selectedExercise, setSelectedExercise] = useState(exerciseCatalog[0]?.id ?? '');
   const [pending, startTransition] = useTransition();
   const pushToast = useAppStore((state) => state.pushToast);
@@ -39,6 +40,11 @@ export function WorkoutLogger({ template, exerciseCatalog = [] }: { template: Te
   );
 
   const completedSets = useMemo(() => exercises.flatMap((exercise) => exercise.sets).filter((set) => set.done).length, [exercises]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   function updateSet(exerciseIndex: number, setIndex: number, patch: Partial<SetRow>) {
     setExercises((current) =>
@@ -85,7 +91,9 @@ export function WorkoutLogger({ template, exerciseCatalog = [] }: { template: Te
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-accent">Active logger</p>
           <h2 className="text-xl font-black text-white">{template.name}</h2>
-          <p className="text-sm text-zinc-400">{template.focus}</p>
+          <p className="text-sm text-zinc-400">
+            {template.focus} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} active
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
