@@ -39,6 +39,7 @@ Open [http://localhost:3000](http://localhost:3000).
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 3. Deploy. No custom build command required (`npm run build`).
+4. In **Project Settings → Deployment Protection**, disable Vercel Authentication / password protection for Production. The app uses Supabase Auth only; Vercel must serve the public URL directly.
 
 Optional: set `NEXT_PUBLIC_SITE_URL` to your production URL for future absolute links / SEO `metadataBase`.
 
@@ -47,6 +48,7 @@ Optional: set `NEXT_PUBLIC_SITE_URL` to your production URL for future absolute 
 - `public/manifest.json`, SVG app icons, `public/sw.js`, and `public/offline.html` are included.
 - The service worker is registered only in production builds.
 - iPhone: Share → Add to Home Screen. Android/Chrome: browser menu → Install App.
+- Standalone/fullscreen mode is controlled by iOS/Android once installed from the home screen; normal Safari/Chrome tabs still show browser UI by design.
 
 ## Project layout
 

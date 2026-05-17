@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, Droplets, Plus, Sparkles } from 'lucide-react';
+import { Camera, Copy, Droplets, Heart, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useState, useTransition } from 'react';
 
 import { QuickAddMeal } from '@/components/nutrition/quick-add-meal';
@@ -12,7 +12,17 @@ import type { getNutritionData } from '@/lib/app-data';
 import { useAppStore } from '@/stores/app-store';
 import type { MealType } from '@/types/domain';
 
-import { estimateFoodPhotoAction, logFoodAction, logWaterAction, saveRecipeAction } from '../actions';
+import {
+  deleteMealItemAction,
+  duplicateMealItemAction,
+  estimateFoodPhotoAction,
+  favoriteMealItemAction,
+  logFoodAction,
+  logWaterAction,
+  moveMealItemAction,
+  saveRecipeAction,
+  updateMealItemAmountAction,
+} from '../actions';
 
 type NutritionData = Awaited<ReturnType<typeof getNutritionData>>;
 type Estimate = { name: string; calories: number; protein: number; carbs: number; fat: number; servingLabel: string };
@@ -113,13 +123,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                     ) : (
                       <div className="space-y-1.5">
                         {items.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-zinc-100">{item.name_snapshot}</p>
-                              <p className="text-[11px] text-zinc-500">P{Math.round(item.protein)} C{Math.round(item.carbs)} F{Math.round(item.fat)}</p>
-                            </div>
-                            <p className="shrink-0 text-xs font-bold text-zinc-300">{Math.round(item.calories)}</p>
-                          </div>
+                          <LoggedFoodRow key={item.id} item={item} currentMealType={type} pushToast={pushToast} />
                         ))}
                       </div>
                     )}
@@ -249,6 +253,109 @@ export function NutritionClient({ data }: { data: NutritionData }) {
             </div>
           </GlassCard>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function LoggedFoodRow({
+  item,
+  currentMealType,
+  pushToast,
+}: {
+  item: NutritionData['meals'][number]['meal_items'][number];
+  currentMealType: MealType;
+  pushToast: (toast: { title: string; body?: string; tone?: 'success' | 'error' | 'info' }) => void;
+}) {
+  const [grams, setGrams] = useState(String(Math.max(1, Math.round(Number(item.servings ?? 1) * 100))));
+  const [pending, startTransition] = useTransition();
+
+  function run(action: (formData: FormData) => Promise<{ ok: boolean; message: string }>, configure: (formData: FormData) => void, title: string) {
+    const formData = new FormData();
+    formData.set('itemId', item.id);
+    configure(formData);
+    startTransition(async () => {
+      const result = await action(formData);
+      pushToast({ title: result.ok ? title : 'Meal error', body: result.message, tone: result.ok ? 'success' : 'error' });
+    });
+  }
+
+  return (
+    <div className="rounded-xl bg-white/[0.04] p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-zinc-100">{item.name_snapshot}</p>
+          <p className="text-[11px] text-zinc-500">
+            {Math.round(item.calories)} kcal · P{Math.round(item.protein)} C{Math.round(item.carbs)} F{Math.round(item.fat)}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(deleteMealItemAction, () => undefined, 'Food deleted')}
+          className="rounded-lg bg-red-500/10 p-1.5 text-red-300"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+        <div className="flex rounded-xl border border-white/10 bg-black/30">
+          <input
+            value={grams}
+            onChange={(event) => setGrams(event.target.value)}
+            inputMode="numeric"
+            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none"
+          />
+          <span className="self-center pr-3 text-xs text-zinc-500">g</span>
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            run(
+              updateMealItemAmountAction,
+              (formData) => {
+                formData.set('amount', grams);
+                formData.set('oldAmount', String(Math.max(1, Math.round(Number(item.servings ?? 1) * 100))));
+              },
+              'Food updated'
+            )
+          }
+          className="rounded-xl bg-white/10 px-3 text-xs font-bold text-white"
+        >
+          Save
+        </button>
+      </div>
+      <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+        {mealTypes
+          .filter((meal) => meal !== currentMealType)
+          .map((meal) => (
+            <button
+              key={meal}
+              type="button"
+              disabled={pending}
+              onClick={() => run(moveMealItemAction, (formData) => formData.set('mealType', meal), `Moved to ${meal}`)}
+              className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-bold text-zinc-300"
+            >
+              move {meal}
+            </button>
+          ))}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(duplicateMealItemAction, (formData) => formData.set('mealType', currentMealType), 'Food duplicated')}
+          className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-bold text-zinc-300"
+        >
+          <Copy className="mr-1 inline h-3 w-3" /> duplicate
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(favoriteMealItemAction, () => undefined, 'Favorite updated')}
+          className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-bold text-zinc-300"
+        >
+          <Heart className="mr-1 inline h-3 w-3" /> favorite
+        </button>
       </div>
     </div>
   );

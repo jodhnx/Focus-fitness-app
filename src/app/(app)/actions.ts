@@ -128,6 +128,121 @@ export async function logWaterAction(formData: FormData): Promise<ActionResult> 
   }
 }
 
+async function getOwnedMealItem(itemId: string) {
+  const { supabase, userId: uid } = await userId();
+  const { data, error } = await supabase
+    .from('meal_items')
+    .select('*, meals!inner(user_id, meal_type)')
+    .eq('id', itemId)
+    .eq('meals.user_id', uid)
+    .single();
+  if (error || !data) throw new Error(error?.message ?? 'Meal item not found.');
+  return { supabase, userId: uid, item: data as Record<string, unknown> };
+}
+
+export async function deleteMealItemAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const id = text(formData, 'itemId');
+    if (!id) return { ok: false, message: 'Missing meal item.' };
+    const { supabase } = await getOwnedMealItem(id);
+    const { error } = await supabase.from('meal_items').delete().eq('id', id);
+    if (error) return { ok: false, message: error.message };
+    revalidatePath('/nutrition');
+    revalidatePath('/dashboard');
+    return { ok: true, message: 'Food deleted.' };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not delete food.' };
+  }
+}
+
+export async function moveMealItemAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const id = text(formData, 'itemId');
+    const mealType = text(formData, 'mealType', 'lunch');
+    const { supabase, userId: uid } = await getOwnedMealItem(id);
+    const { data: meal, error: mealError } = await supabase
+      .from('meals')
+      .insert({ user_id: uid, meal_type: mealType, name: mealType, logged_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    if (mealError || !meal) return { ok: false, message: mealError?.message ?? 'Could not move food.' };
+    const { error } = await supabase.from('meal_items').update({ meal_id: (meal as { id: string }).id }).eq('id', id);
+    if (error) return { ok: false, message: error.message };
+    revalidatePath('/nutrition');
+    revalidatePath('/dashboard');
+    return { ok: true, message: `Moved to ${mealType}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not move food.' };
+  }
+}
+
+export async function duplicateMealItemAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const id = text(formData, 'itemId');
+    const mealType = text(formData, 'mealType', 'lunch');
+    const { supabase, userId: uid, item } = await getOwnedMealItem(id);
+    const { data: meal, error: mealError } = await supabase
+      .from('meals')
+      .insert({ user_id: uid, meal_type: mealType, name: mealType, logged_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    if (mealError || !meal) return { ok: false, message: mealError?.message ?? 'Could not duplicate food.' };
+    const { id: _id, created_at: _createdAt, updated_at: _updatedAt, meals: _meals, ...copy } = item;
+    const { error } = await supabase.from('meal_items').insert({ ...copy, meal_id: (meal as { id: string }).id });
+    if (error) return { ok: false, message: error.message };
+    revalidatePath('/nutrition');
+    revalidatePath('/dashboard');
+    return { ok: true, message: `Duplicated to ${mealType}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not duplicate food.' };
+  }
+}
+
+export async function updateMealItemAmountAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const id = text(formData, 'itemId');
+    const amount = Math.max(1, number(formData, 'amount', 100));
+    const oldAmount = Math.max(1, number(formData, 'oldAmount', amount));
+    const ratio = amount / oldAmount;
+    const { supabase, item } = await getOwnedMealItem(id);
+    const { error } = await supabase
+      .from('meal_items')
+      .update({
+        servings: Number(item.servings ?? 1) * ratio,
+        calories: Math.round(Number(item.calories ?? 0) * ratio),
+        protein: Math.round(Number(item.protein ?? 0) * ratio * 10) / 10,
+        carbs: Math.round(Number(item.carbs ?? 0) * ratio * 10) / 10,
+        fat: Math.round(Number(item.fat ?? 0) * ratio * 10) / 10,
+        fiber: Math.round(Number(item.fiber ?? 0) * ratio * 10) / 10,
+        sugar: Math.round(Number(item.sugar ?? 0) * ratio * 10) / 10,
+        sodium_mg: Math.round(Number(item.sodium_mg ?? 0) * ratio),
+      })
+      .eq('id', id);
+    if (error) return { ok: false, message: error.message };
+    revalidatePath('/nutrition');
+    revalidatePath('/dashboard');
+    return { ok: true, message: 'Food updated.' };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not update food.' };
+  }
+}
+
+export async function favoriteMealItemAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const id = text(formData, 'itemId');
+    const { item } = await getOwnedMealItem(id);
+    const favoriteForm = new FormData();
+    favoriteForm.set('favoriteType', 'food');
+    favoriteForm.set('targetId', id);
+    favoriteForm.set('label', String(item.name_snapshot ?? 'Food'));
+    favoriteForm.set('meta_calories', String(item.calories ?? 0));
+    favoriteForm.set('meta_protein', String(item.protein ?? 0));
+    return toggleFavoriteAction(favoriteForm);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not favorite food.' };
+  }
+}
+
 export async function toggleFavoriteAction(formData: FormData): Promise<ActionResult> {
   try {
     const { supabase, userId: uid } = await userId();

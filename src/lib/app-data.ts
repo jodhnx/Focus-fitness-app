@@ -28,6 +28,7 @@ export type ProfileRow = {
 
 export type MealItemRow = {
   id: string;
+  meal_id: string;
   name_snapshot: string;
   servings: number;
   calories: number;

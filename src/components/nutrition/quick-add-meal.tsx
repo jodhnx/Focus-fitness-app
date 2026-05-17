@@ -1,7 +1,6 @@
 'use client';
 
-import Image from 'next/image';
-import { Apple, Heart, Loader2, Minus, Plus, Search, X } from 'lucide-react';
+import { Heart, Loader2, Minus, Plus, Search, X } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, useTransition } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -197,7 +196,7 @@ export function QuickAddMeal({
               ) : data.length === 0 ? (
                 <GlassCard>
                   <p className="font-bold text-white">Search Austrian and German products</p>
-                  <p className="mt-1 text-sm text-zinc-400">Type at least two characters or paste a barcode. Results include calories, macros, fiber, serving size and images when available.</p>
+                  <p className="mt-1 text-sm text-zinc-400">Type at least two characters or paste a barcode. Results show compact calories and macros for fast logging.</p>
                 </GlassCard>
               ) : (
                 <div className="space-y-3">
@@ -215,20 +214,15 @@ export function QuickAddMeal({
                     };
                     return (
                       <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                        <div className="flex gap-3">
-                          <ProductImage src={item.imageUrl} alt={item.name} />
-                          <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                             <p className="line-clamp-2 font-bold text-white">{item.name}</p>
                             <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel} · {Math.round(displayGrams)}g selected</p>
-                            <div className="mt-2 grid grid-cols-3 gap-1 text-[11px] sm:grid-cols-6">
+                            <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
                               <N label="kcal" value={preview.calories} />
                               <N label="P" value={`${preview.protein}g`} />
                               <N label="C" value={`${preview.carbs}g`} />
                               <N label="F" value={`${preview.fat}g`} />
-                              <N label="fiber" value={`${preview.fiber}g`} />
-                              <N label="sugar" value={`${preview.sugar}g`} />
                             </div>
-                          </div>
                         </div>
                         <div className="mt-3 flex gap-2">
                           <Button type="button" className="flex-1" disabled={logMutation.isPending} onClick={() => logMutation.mutate(buildFormData(item))}>
@@ -263,14 +257,6 @@ export function QuickAddMeal({
         </div>
       ) : null}
     </>
-  );
-}
-
-function ProductImage({ src, alt }: { src?: string; alt: string }) {
-  return (
-    <div className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/15 to-cyan-500/10">
-      {src ? <Image src={src} alt={alt} fill className="object-cover" sizes="80px" /> : <Apple className="h-7 w-7 text-brand-accent" />}
-    </div>
   );
 }
 
