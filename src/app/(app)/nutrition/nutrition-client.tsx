@@ -40,12 +40,12 @@ export function NutritionClient({ data }: { data: NutritionData }) {
 
   return (
     <div className="space-y-4 md:space-y-5">
-      <section className="rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.2),transparent_35%),rgba(255,255,255,.045)] p-4 shadow-glass md:p-5">
+      <section className="rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.2),transparent_35%),rgba(255,255,255,.045)] p-4 shadow-glass md:rounded-[1.75rem] md:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-accent">Nutrition</p>
             <h1 className="mt-1 text-2xl font-black text-white">Today&apos;s fuel</h1>
-            <p className="text-xs text-zinc-400">Fast food search, diary, recipes and scanner.</p>
+            <p className="hidden text-xs text-zinc-400 sm:block">Fast food search, diary, recipes and scanner.</p>
           </div>
           <QuickAddMeal
             favorites={favorites}
@@ -55,24 +55,24 @@ export function NutritionClient({ data }: { data: NutritionData }) {
           />
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-[140px_1fr] sm:items-center">
-          <div className="flex justify-center">
+        <div className="mt-3 grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center md:mt-4">
+          <div className="hidden justify-center sm:flex">
             <ProgressRing value={totals.calories} max={profile.calorie_target} label={`${caloriePct}%`} sub="calories" size={116} stroke={10} />
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-4 gap-2">
             <TinyStat label="Eaten" value={Math.round(totals.calories)} sub="kcal" />
             <TinyStat label="Remaining" value={Math.round(caloriesRemaining)} sub="kcal" />
             <TinyStat label="Fiber" value={`${Math.round(totals.fiber)}g`} sub="today" />
             <TinyStat label="Water" value={`${totals.waterMl}`} sub={`/ ${profile.water_target_ml} ml`} />
           </div>
         </div>
-      </section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <MacroCard label="Protein" value={totals.protein} max={profile.protein_target_g} color="bg-brand-protein" />
-        <MacroCard label="Carbs" value={totals.carbs} max={profile.carbs_target_g} color="bg-brand-carbs" />
-        <MacroCard label="Fats" value={totals.fat} max={profile.fat_target_g} color="bg-brand-fat" />
-      </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <MacroCard label="Protein" value={totals.protein} max={profile.protein_target_g} color="bg-brand-protein" />
+          <MacroCard label="Carbs" value={totals.carbs} max={profile.carbs_target_g} color="bg-brand-carbs" />
+          <MacroCard label="Fats" value={totals.fat} max={profile.fat_target_g} color="bg-brand-fat" />
+        </div>
+      </section>
 
       <GlassCard className="!p-4">
         <div className="mb-2 flex items-center justify-between text-xs">
@@ -365,10 +365,10 @@ function LoggedFoodRow({
 
 function TinyStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-2xl bg-black/25 p-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
-      <p className="mt-1 text-xl font-black text-white">{value}</p>
-      <p className="text-[11px] text-zinc-500">{sub}</p>
+    <div className="rounded-xl bg-black/25 p-2 md:rounded-2xl md:p-3">
+      <p className="truncate text-[9px] font-black uppercase tracking-wide text-zinc-500 md:text-[10px] md:tracking-widest">{label}</p>
+      <p className="mt-0.5 truncate text-base font-black text-white md:mt-1 md:text-xl">{value}</p>
+      <p className="truncate text-[10px] text-zinc-500 md:text-[11px]">{sub}</p>
     </div>
   );
 }
@@ -376,12 +376,12 @@ function TinyStat({ label, value, sub }: { label: string; value: string | number
 function MacroCard({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const pct = Math.min(100, Math.round((value / Math.max(1, max)) * 100));
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-2.5 md:rounded-2xl md:p-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-black uppercase tracking-widest text-zinc-500">{label}</p>
-        <p className="text-xs font-bold text-zinc-300">{Math.round(value)} / {max}g</p>
+        <p className="text-[10px] font-black uppercase tracking-wide text-zinc-500 md:text-xs md:tracking-widest">{label}</p>
+        <p className="text-[10px] font-bold text-zinc-300 md:text-xs">{Math.round(value)} / {max}g</p>
       </div>
-      <div className="mt-3 h-1.5 rounded-full bg-white/10">
+      <div className="mt-2 h-1.5 rounded-full bg-white/10 md:mt-3">
         <div className={`${color} h-full rounded-full`} style={{ width: `${pct}%` }} />
       </div>
     </div>

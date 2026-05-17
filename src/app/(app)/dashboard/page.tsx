@@ -21,7 +21,7 @@ export default async function DashboardPage({
   const caloriesRemaining = Math.max(0, calorieTarget - totals.calories);
 
   return (
-    <div className="space-y-5 md:space-y-7">
+    <div className="space-y-4 md:space-y-7">
       {sp.onboarding === 'success' ? (
         <div
           role="status"
@@ -31,30 +31,23 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.03))] p-5 shadow-glass md:p-7">
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-center">
+      <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.03))] p-4 shadow-glass md:rounded-[2rem] md:p-7">
+        <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-accent">Today</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white md:text-5xl">Hey, {name}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-300">
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-brand-accent md:text-xs">Today</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:mt-2 md:text-5xl">Hey, {name}</h1>
+            <p className="mt-2 hidden max-w-xl text-sm leading-6 text-zinc-300 sm:block">
               Your live overview: calories remaining, macros, hydration, workouts, weight trend and daily consistency.
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-4 gap-2 md:mt-5 md:gap-3">
               <MiniStat label="Remaining" value={`${Math.round(caloriesRemaining)}`} sub="kcal" />
               <MiniStat label="Eaten" value={`${Math.round(totals.calories)}`} sub="kcal" />
               <MiniStat label="Protein" value={`${Math.round(totals.protein)}g`} sub={`${proteinTarget}g goal`} />
               <MiniStat label="Level" value={profile.level} sub={`${profile.xp} XP`} />
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center gap-4">
-            <ProgressRing
-              value={totals.calories}
-              max={calorieTarget}
-              label={`${Math.round((totals.calories / calorieTarget) * 100)}%`}
-              sub="calories"
-              size={154}
-            />
-            <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-black/20 p-3">
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/20 p-2.5 md:rounded-3xl md:p-3">
               <p className="mb-2 text-center text-[10px] font-black uppercase tracking-widest text-zinc-500">Essen hinzufügen</p>
               <div className="grid grid-cols-2 gap-2">
                 <MealTile label="Frühstück" mealType="breakfast" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
@@ -63,7 +56,16 @@ export default async function DashboardPage({
                 <MealTile label="Snacks" mealType="snack" favorites={favorites} recentFoods={recentFoods} userRecipes={userRecipes} />
               </div>
             </div>
-            <div className="w-full max-w-sm">
+            <div className="hidden sm:block">
+              <ProgressRing
+                value={totals.calories}
+                max={calorieTarget}
+                label={`${Math.round((totals.calories / calorieTarget) * 100)}%`}
+                sub="calories"
+                size={132}
+              />
+            </div>
+            <div className="hidden w-full max-w-sm sm:block">
               <Link href="/workouts" className="block rounded-2xl border border-white/10 bg-black/25 px-5 py-3 text-center text-sm font-black text-white">
                 Start workout
               </Link>
@@ -202,10 +204,10 @@ function Macro({ label, value, max, className }: { label: string; value: number;
 
 function MiniStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</p>
-      <p className="mt-1 text-2xl font-black text-white">{value}</p>
-      <p className="text-xs text-zinc-500">{sub}</p>
+    <div className="rounded-xl border border-white/10 bg-black/25 p-2 md:rounded-2xl md:p-3">
+      <p className="truncate text-[9px] font-bold uppercase tracking-wide text-zinc-500 md:text-[10px] md:tracking-widest">{label}</p>
+      <p className="mt-0.5 truncate text-base font-black text-white md:mt-1 md:text-2xl">{value}</p>
+      <p className="truncate text-[10px] text-zinc-500 md:text-xs">{sub}</p>
     </div>
   );
 }
@@ -230,7 +232,7 @@ function MealTile({
       favorites={favorites}
       recentFoods={recentFoods}
       userRecipes={userRecipes}
-      triggerClassName="rounded-2xl bg-white/5 px-3 py-3 text-center text-xs font-black text-white transition hover:bg-brand-accent/15 hover:text-brand-accent"
+      triggerClassName="rounded-xl bg-white/5 px-2 py-2.5 text-center text-[11px] font-black text-white transition hover:bg-brand-accent/15 hover:text-brand-accent md:rounded-2xl md:px-3 md:py-3 md:text-xs"
     />
   );
 }

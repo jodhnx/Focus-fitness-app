@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Search } from 'lucide-react';
+import { Heart, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ const categories: ('all' | RecipeCategory)[] = ['all', 'breakfast', 'lunch', 'di
 export function RecipesClient({ recipes }: { recipes: Recipe[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | RecipeCategory>('all');
+  const [showBuilder, setShowBuilder] = useState(false);
   const [pending, startTransition] = useTransition();
   const pushToast = useAppStore((state) => state.pushToast);
 
@@ -54,15 +55,25 @@ export function RecipesClient({ recipes }: { recipes: Recipe[] }) {
       </div>
 
       <GlassCard>
-        <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-          <Search className="h-4 w-4 text-zinc-500" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chicken, oats, bowl, vegan..."
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+            <Search className="h-4 w-4 text-zinc-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search chicken, oats, bowl, vegan..."
+              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowBuilder((value) => !value)}
+            aria-label={showBuilder ? 'Rezept-Builder schließen' : 'Eigenes Rezept erstellen'}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-accent text-brand-bg shadow-lg shadow-emerald-500/20"
+          >
+            {showBuilder ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+          </button>
+        </div>
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {categories.map((cat) => (
             <button
@@ -79,7 +90,7 @@ export function RecipesClient({ recipes }: { recipes: Recipe[] }) {
         </div>
       </GlassCard>
 
-      <RecipeBuilder />
+      {showBuilder ? <RecipeBuilder /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((recipe) => (

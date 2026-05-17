@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    router.prefetch(redirectTo);
+  }, [redirectTo, router]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -26,12 +30,14 @@ export default function LoginPage() {
       const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signErr) {
         setError(signErr.message);
+        setLoading(false);
         return;
       }
-      router.push(redirectTo);
+      router.replace(redirectTo);
       router.refresh();
-    } finally {
+    } catch {
       setLoading(false);
+      setError('Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
     }
   }
 
@@ -69,11 +75,11 @@ export default function LoginPage() {
           type="submit"
           disabled={loading}
           className={cn(
-            'mt-6 w-full rounded-xl bg-brand-accent py-3 text-sm font-bold text-brand-bg transition hover:brightness-110',
-            loading && 'opacity-60'
+            'mt-6 w-full rounded-xl bg-brand-accent py-3 text-sm font-bold text-brand-bg transition hover:brightness-110 disabled:cursor-wait disabled:opacity-80',
+            loading && 'shadow-lg shadow-emerald-500/20'
           )}
         >
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? 'Anmeldung läuft…' : 'Anmelden'}
         </button>
         <p className="mt-3 text-center text-xs text-zinc-500">Du brauchst nur dein ApexFit/Supabase Konto.</p>
         <div className="mt-4 flex justify-between text-sm">

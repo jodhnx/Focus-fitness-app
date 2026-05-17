@@ -37,5 +37,5 @@ export default async function RecipesPage() {
     };
   });
 
-  return <RecipesClient recipes={[...userRecipes, ...recipes]} />;
+  return <RecipesClient recipes={[...recipes, ...userRecipes]} />;
 }
