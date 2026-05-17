@@ -46,7 +46,7 @@ export default async function DashboardPage({
               <MiniStat label="Level" value={profile.level} sub={`${profile.xp} XP`} />
             </div>
           </div>
-          <div className="flex items-center justify-center gap-5">
+          <div className="flex flex-col items-center justify-center gap-4">
             <ProgressRing
               value={totals.calories}
               max={calorieTarget}
@@ -54,12 +54,16 @@ export default async function DashboardPage({
               sub="calories"
               size={154}
             />
-            <div className="space-y-2">
-              <QuickAddMeal
-                favorites={favorites}
-                recentFoods={recentFoods}
-                triggerClassName="block rounded-2xl bg-brand-accent px-5 py-3 text-center text-sm font-black text-brand-bg shadow-lg shadow-emerald-500/20"
-              />
+            <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-black/20 p-3">
+              <p className="mb-2 text-center text-[10px] font-black uppercase tracking-widest text-zinc-500">Essen hinzufügen</p>
+              <div className="grid grid-cols-2 gap-2">
+                <MealTile label="Frühstück" mealType="breakfast" favorites={favorites} recentFoods={recentFoods} />
+                <MealTile label="Mittagessen" mealType="lunch" favorites={favorites} recentFoods={recentFoods} />
+                <MealTile label="Abendessen" mealType="dinner" favorites={favorites} recentFoods={recentFoods} />
+                <MealTile label="Snacks" mealType="snack" favorites={favorites} recentFoods={recentFoods} />
+              </div>
+            </div>
+            <div className="w-full max-w-sm">
               <Link href="/workouts" className="block rounded-2xl border border-white/10 bg-black/25 px-5 py-3 text-center text-sm font-black text-white">
                 Start workout
               </Link>
@@ -203,5 +207,27 @@ function MiniStat({ label, value, sub }: { label: string; value: string | number
       <p className="mt-1 text-2xl font-black text-white">{value}</p>
       <p className="text-xs text-zinc-500">{sub}</p>
     </div>
+  );
+}
+
+function MealTile({
+  label,
+  mealType,
+  favorites,
+  recentFoods,
+}: {
+  label: string;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  favorites: { label: string; metadata: Record<string, unknown> }[];
+  recentFoods: Record<string, unknown>[];
+}) {
+  return (
+    <QuickAddMeal
+      initialMealType={mealType}
+      triggerLabel={`+ ${label}`}
+      favorites={favorites}
+      recentFoods={recentFoods}
+      triggerClassName="rounded-2xl bg-white/5 px-3 py-3 text-center text-xs font-black text-white transition hover:bg-brand-accent/15 hover:text-brand-accent"
+    />
   );
 }

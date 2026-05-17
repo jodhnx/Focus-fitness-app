@@ -29,20 +29,25 @@ function gramsFromServingLabel(label: string) {
 
 export function QuickAddMeal({
   triggerClassName,
+  triggerLabel = 'Quick add meal',
+  initialMealType = 'breakfast',
   favorites = [],
   recentFoods = [],
 }: {
   triggerClassName?: string;
+  triggerLabel?: string;
+  initialMealType?: MealType;
   favorites?: { label: string; metadata: Record<string, unknown> }[];
   recentFoods?: Record<string, unknown>[];
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [mealType, setMealType] = useState<MealType>('breakfast');
+  const [mealType, setMealType] = useState<MealType>(initialMealType);
   const [grams, setGrams] = useState('100');
   const [servings, setServings] = useState('1');
   const [mode, setMode] = useState<'custom' | 'serving' | 'package'>('custom');
   const [packageGrams, setPackageGrams] = useState('250');
+  const [selectedFood, setSelectedFood] = useState<FoodCatalogItem | null>(null);
   const [pending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -89,7 +94,7 @@ export function QuickAddMeal({
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
-        Quick add meal
+        {triggerLabel}
       </button>
       {open ? (
         <div className="fixed inset-0 z-50 bg-black/75 p-3 backdrop-blur-sm md:p-6">
@@ -110,7 +115,10 @@ export function QuickAddMeal({
                   <input
                     autoFocus
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setSelectedFood(null);
+                    }}
                     placeholder="Milch, Skyr, Haferflocken or barcode"
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                   />
@@ -200,6 +208,31 @@ export function QuickAddMeal({
                 </GlassCard>
               ) : (
                 <div className="space-y-3">
+                  {selectedFood ? (
+                    <SelectedFoodDetail
+                      item={selectedFood}
+                      mode={mode}
+                      grams={grams}
+                      servings={servings}
+                      packageGrams={packageGrams}
+                      mealType={mealType}
+                      pending={pending}
+                      logPending={logMutation.isPending}
+                      onAdd={() => logMutation.mutate(buildFormData(selectedFood))}
+                      onFavorite={() =>
+                        startTransition(async () => {
+                          const formData = new FormData();
+                          formData.set('favoriteType', 'food');
+                          formData.set('targetId', selectedFood.id);
+                          formData.set('label', selectedFood.name);
+                          formData.set('meta_calories', String(selectedFood.calories));
+                          const result = await toggleFavoriteAction(formData);
+                          pushToast({ title: result.ok ? 'Favorite updated' : 'Favorite error', body: result.message, tone: result.ok ? 'success' : 'error' });
+                        })
+                      }
+                    />
+                  ) : null}
+
                   {data.map((item) => {
                     const servingGrams = gramsFromServingLabel(item.servingLabel);
                     const displayGrams = mode === 'package' ? Number(packageGrams) || 250 : mode === 'serving' ? (Number(servings) || 1) * servingGrams : Number(grams) || 100;
@@ -213,41 +246,32 @@ export function QuickAddMeal({
                       sugar: Math.round((item.sugar ?? 0) * multiplier),
                     };
                     return (
-                      <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedFood(item)}
+                        className={`w-full rounded-2xl border p-3 text-left transition ${
+                          selectedFood?.id === item.id ? 'border-brand-accent/70 bg-brand-accent/10' : 'border-white/10 bg-white/[0.04]'
+                        }`}
+                      >
                         <div className="min-w-0">
-                            <p className="line-clamp-2 font-bold text-white">{item.name}</p>
-                            <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel} · {Math.round(displayGrams)}g selected</p>
-                            <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
-                              <N label="kcal" value={preview.calories} />
-                              <N label="P" value={`${preview.protein}g`} />
-                              <N label="C" value={`${preview.carbs}g`} />
-                              <N label="F" value={`${preview.fat}g`} />
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="line-clamp-2 font-bold text-white">{item.name}</p>
+                              <p className="text-xs text-zinc-500">{item.brand ?? 'Open Food Facts'} · {item.servingLabel}</p>
                             </div>
+                            <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-xs font-black text-brand-accent">
+                              select
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-4 gap-1 text-[11px]">
+                            <N label="kcal" value={preview.calories} />
+                            <N label="P" value={`${preview.protein}g`} />
+                            <N label="C" value={`${preview.carbs}g`} />
+                            <N label="F" value={`${preview.fat}g`} />
+                          </div>
                         </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button type="button" className="flex-1" disabled={logMutation.isPending} onClick={() => logMutation.mutate(buildFormData(item))}>
-                            Add to {mealType}
-                          </Button>
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() =>
-                              startTransition(async () => {
-                                const formData = new FormData();
-                                formData.set('favoriteType', 'food');
-                                formData.set('targetId', item.id);
-                                formData.set('label', item.name);
-                                formData.set('meta_calories', String(item.calories));
-                                const result = await toggleFavoriteAction(formData);
-                                pushToast({ title: result.ok ? 'Favorite updated' : 'Favorite error', body: result.message, tone: result.ok ? 'success' : 'error' });
-                              })
-                            }
-                            className="rounded-xl border border-white/10 px-3 text-zinc-300"
-                          >
-                            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -257,6 +281,70 @@ export function QuickAddMeal({
         </div>
       ) : null}
     </>
+  );
+}
+
+function SelectedFoodDetail({
+  item,
+  mode,
+  grams,
+  servings,
+  packageGrams,
+  mealType,
+  pending,
+  logPending,
+  onAdd,
+  onFavorite,
+}: {
+  item: FoodCatalogItem;
+  mode: 'custom' | 'serving' | 'package';
+  grams: string;
+  servings: string;
+  packageGrams: string;
+  mealType: MealType;
+  pending: boolean;
+  logPending: boolean;
+  onAdd: () => void;
+  onFavorite: () => void;
+}) {
+  const servingGrams = gramsFromServingLabel(item.servingLabel);
+  const displayGrams = mode === 'package' ? Number(packageGrams) || 250 : mode === 'serving' ? (Number(servings) || 1) * servingGrams : Number(grams) || 100;
+  const multiplier = Math.max(1, displayGrams) / 100;
+  const values = {
+    calories: Math.round(item.calories * multiplier),
+    protein: Math.round(item.protein * multiplier),
+    carbs: Math.round(item.carbs * multiplier),
+    fat: Math.round(item.fat * multiplier),
+    fiber: Math.round((item.fiber ?? 0) * multiplier),
+    sugar: Math.round((item.sugar ?? 0) * multiplier),
+    sodiumMg: Math.round((item.sodiumMg ?? 0) * multiplier),
+  };
+
+  return (
+    <div className="rounded-[1.5rem] border border-brand-accent/40 bg-brand-accent/10 p-4 shadow-glass">
+      <p className="text-[10px] font-black uppercase tracking-widest text-brand-accent">Selected product</p>
+      <h3 className="mt-1 text-lg font-black text-white">{item.name}</h3>
+      <p className="mt-1 text-xs text-zinc-400">
+        {item.brand ?? 'Open Food Facts'} · {item.servingLabel} · {Math.round(displayGrams)}g
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:grid-cols-7">
+        <N label="kcal" value={values.calories} />
+        <N label="P" value={`${values.protein}g`} />
+        <N label="C" value={`${values.carbs}g`} />
+        <N label="F" value={`${values.fat}g`} />
+        <N label="fiber" value={`${values.fiber}g`} />
+        <N label="sugar" value={`${values.sugar}g`} />
+        <N label="salt" value={`${values.sodiumMg}mg`} />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button type="button" className="flex-1" disabled={logPending} onClick={onAdd}>
+          Add to {mealType}
+        </Button>
+        <button type="button" disabled={pending} onClick={onFavorite} className="rounded-xl border border-white/10 px-3 text-zinc-300">
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
   );
 }
 
