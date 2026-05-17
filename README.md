@@ -1,12 +1,12 @@
-# ApexFit — Next.js 15 + Supabase + Vercel
+# ApexFit — Production Fitness MVP
 
-Premium **fitness & nutrition** web app (MyFitnessPal / Hevy–style): auth, onboarding, food search (Open Food Facts), training plans, recipes, progress charts, and PWA-ready shell.
+Premium **fitness, nutrition and workout tracking** web app for Vercel: Supabase Auth, onboarding, nutrition diary, Open Food Facts search/barcode fallback, recipes, workout logger, progress tracking, settings and installable PWA shell.
 
 ## Stack
 
 - **Next.js 15** (App Router) · **TypeScript** · **Tailwind CSS**
 - **Supabase** (Auth + Postgres) with `@supabase/ssr` cookies
-- **TanStack Query** · **Framer Motion** (auth screens) · **Recharts** (progress demo)
+- **TanStack Query** · **Zustand** · **Framer Motion** · **Recharts**
 - **Vercel**-friendly: `next build` / Edge-compatible middleware session refresh
 
 ## Quick start
@@ -23,13 +23,14 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run migrations **in order**:
-   - `supabase/migrations/001_initial_schema.sql`
-   - `supabase/migrations/002_next_schema_extensions.sql`
+2. In **SQL Editor**, run the single clean schema:
+   - `supabase/migrations/20260216000000_complete_schema.sql`
+   This is a clean-slate migration for new projects. Back up/reset before applying to an existing database.
 3. **Authentication → URL configuration**: add your site URL and redirect URLs, e.g.
    - `http://localhost:3000/auth/callback`
    - `https://YOUR_VERCEL_DOMAIN/auth/callback`
 4. Enable **Email** provider (and optional **Confirm email**).
+5. Create a public Storage bucket named `progress-photos` for progress photos. For private photos, make the bucket private and replace `getPublicUrl` with signed URLs.
 
 ## Vercel
 
@@ -43,8 +44,9 @@ Optional: set `NEXT_PUBLIC_SITE_URL` to your production URL for future absolute 
 
 ## PWA
 
-- `public/manifest.json` + `metadata` / `viewport` in `src/app/layout.tsx`.
-- Add `public/icons/icon-192.png` and `icon-512.png` for install prompts (currently omitted to avoid broken icon URLs).
+- `public/manifest.json`, SVG app icons, `public/sw.js`, and `public/offline.html` are included.
+- The service worker is registered only in production builds.
+- iPhone: Share → Add to Home Screen. Android/Chrome: browser menu → Install App.
 
 ## Project layout
 
@@ -54,18 +56,17 @@ src/app/
   (app)/           # authenticated shell: dashboard, nutrition, workouts, recipes, progress, profile, settings
   onboarding/      # post-signup profile wizard
   api/food/search  # server proxy for Open Food Facts (EU-biased search in lib)
-src/components/    # AppShell, GlassCard, providers
-src/lib/           # Supabase clients, OFF API, nutrition math, dates
+src/components/    # AppShell, reusable UI primitives, providers, PWA registration
+src/lib/           # Supabase clients, app data loaders, OFF API, nutrition math, dates
 src/data/          # recipes, training plans, exercises (seed / UI)
 ```
 
-## What was removed
+## Functional MVP
 
-The previous **Expo / React Native** client was removed in favor of this **web-first** codebase (mobile users use Safari/Chrome + PWA).
-
-## Next steps (product)
-
-- Persist meals & water to Supabase (`meals`, `meal_items`, `water_entries`).
-- Full workout session logger writing `workouts` + `workout_sets`.
-- Nutritionix server route with secret key (never expose to browser).
-- AI routes using OpenAI/Anthropic with streaming.
+- Auth, protected routes and onboarding persist profile targets to Supabase.
+- Dashboard aggregates meals, water, workouts, progress, XP and achievements.
+- Nutrition logs custom foods, Open Food Facts search results, barcode/manual lookup, water, favorites and recents.
+- Recipes include search/filter, detail pages, favorites and log-to-meal.
+- Workouts include prebuilt plans, active set logger, rest timer, workout history and PR tracking.
+- Progress includes weight/body-fat/measurements/photos, charts, PRs and achievements.
+- Settings include profile editing, units, theme, notifications and workout rest defaults.

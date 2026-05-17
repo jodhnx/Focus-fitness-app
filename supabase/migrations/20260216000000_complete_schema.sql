@@ -17,6 +17,9 @@ drop trigger if exists on_auth_user_created on auth.users;
 -- Cleanup: public tables (dependency order not required with CASCADE)
 -- ---------------------------------------------------------------------------
 drop table if exists public.ai_coach_messages cascade;
+drop table if exists public.user_settings cascade;
+drop table if exists public.achievements cascade;
+drop table if exists public.favorites cascade;
 drop table if exists public.achievement_unlocks cascade;
 drop table if exists public.personal_records cascade;
 drop table if exists public.favorite_recipes cascade;
@@ -72,6 +75,7 @@ create table public.profiles (
   fitness_focus text not null default 'maintain_weight' check (
     fitness_focus in ('fat_loss', 'muscle_gain', 'maintain_weight', 'strength', 'endurance')
   ),
+  experience_level text not null default 'beginner' check (experience_level in ('beginner', 'intermediate', 'advanced')),
   activity_level text not null default 'moderate' check (
     activity_level in ('sedentary', 'light', 'moderate', 'active', 'athlete')
   ),
@@ -87,6 +91,7 @@ create table public.profiles (
   sodium_target_mg integer not null default 2300 check (sodium_target_mg >= 0),
 
   water_goal_glasses integer not null default 8 check (water_goal_glasses between 1 and 30),
+  water_target_ml integer not null default 2500 check (water_target_ml between 500 and 8000),
   unit_system text not null default 'metric' check (unit_system in ('metric', 'imperial')),
 
   onboarding_complete boolean not null default false,
@@ -101,6 +106,9 @@ create table public.profiles (
 
   workout_streak_current integer not null default 0 check (workout_streak_current >= 0),
   workout_streak_best integer not null default 0 check (workout_streak_best >= 0),
+  nutrition_streak_current integer not null default 0 check (nutrition_streak_current >= 0),
+  xp integer not null default 0 check (xp >= 0),
+  level integer not null default 1 check (level >= 1),
   last_workout_date date,
 
   created_at timestamptz not null default timezone('utc', now()),
@@ -113,6 +121,22 @@ create unique index profiles_username_lower_idx
 
 create trigger profiles_set_updated_at
   before update on public.profiles
+  for each row execute function public.set_updated_at();
+
+create table public.user_settings (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  theme text not null default 'dark' check (theme in ('dark', 'light', 'system')),
+  unit_system text not null default 'metric' check (unit_system in ('metric', 'imperial')),
+  notifications_enabled boolean not null default true,
+  marketing_emails_enabled boolean not null default false,
+  workout_rest_seconds integer not null default 90 check (workout_rest_seconds between 15 and 600),
+  daily_weigh_in_reminder boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create trigger user_settings_set_updated_at
+  before update on public.user_settings
   for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
@@ -434,6 +458,19 @@ create table public.favorite_recipes (
   primary key (user_id, recipe_id)
 );
 
+create table public.favorites (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  favorite_type text not null check (favorite_type in ('food', 'recipe', 'workout_template', 'exercise')),
+  target_id text not null,
+  label text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  unique (user_id, favorite_type, target_id)
+);
+
+create index favorites_user_type_idx on public.favorites (user_id, favorite_type, created_at desc);
+
 -- ---------------------------------------------------------------------------
 -- personal_records — PR history
 -- ---------------------------------------------------------------------------
@@ -461,6 +498,25 @@ create table public.achievement_unlocks (
   unlocked_at timestamptz not null default timezone('utc', now()),
   primary key (user_id, achievement_id)
 );
+
+create table public.achievements (
+  id text primary key,
+  title text not null,
+  description text not null,
+  icon text not null default 'star',
+  xp_reward integer not null default 50 check (xp_reward >= 0),
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+insert into public.achievements (id, title, description, icon, xp_reward)
+values
+  ('first_meal', 'First log', 'Log your first meal.', 'apple', 50),
+  ('hydration_hero', 'Hydration hero', 'Hit your water goal for a day.', 'droplet', 75),
+  ('first_workout', 'First workout', 'Complete your first workout.', 'dumbbell', 100),
+  ('pr_hunter', 'PR hunter', 'Set a new personal record.', 'trophy', 100),
+  ('streak_3', 'Three day streak', 'Stay consistent for three days.', 'flame', 150),
+  ('ten_workouts', 'Ten workouts', 'Complete ten workouts.', 'medal', 250)
+on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- ai_coach_messages — placeholder for future coach sync
@@ -497,6 +553,10 @@ begin
   values (new.id, dn)
   on conflict (id) do nothing;
 
+  insert into public.user_settings (user_id)
+  values (new.id)
+  on conflict (user_id) do nothing;
+
   return new;
 end;
 $$;
@@ -509,6 +569,7 @@ create trigger on_auth_user_created
 -- Row level security
 -- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
+alter table public.user_settings enable row level security;
 alter table public.foods enable row level security;
 alter table public.meals enable row level security;
 alter table public.meal_items enable row level security;
@@ -523,7 +584,9 @@ alter table public.progress_entries enable row level security;
 alter table public.water_entries enable row level security;
 alter table public.favorite_foods enable row level security;
 alter table public.favorite_recipes enable row level security;
+alter table public.favorites enable row level security;
 alter table public.personal_records enable row level security;
+alter table public.achievements enable row level security;
 alter table public.achievement_unlocks enable row level security;
 alter table public.ai_coach_messages enable row level security;
 
@@ -540,6 +603,11 @@ create policy "profiles_update_own"
   on public.profiles for update to authenticated
   using (id = auth.uid())
   with check (id = auth.uid());
+
+create policy "user_settings_all_own"
+  on public.user_settings for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 -- foods
 create policy "foods_select_visible"
@@ -718,6 +786,11 @@ create policy "favorite_recipes_all_own"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+create policy "favorites_all_own"
+  on public.favorites for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 -- personal_records
 create policy "personal_records_all_own"
   on public.personal_records for all to authenticated
@@ -729,6 +802,10 @@ create policy "achievement_unlocks_all_own"
   on public.achievement_unlocks for all to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+create policy "achievements_select_all"
+  on public.achievements for select to authenticated
+  using (true);
 
 -- ai_coach_messages
 create policy "ai_coach_messages_all_own"

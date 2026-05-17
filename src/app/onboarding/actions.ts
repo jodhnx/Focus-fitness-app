@@ -8,6 +8,7 @@ import type { ActivityLevel, Gender, PhysiqueGoal } from '@/types/domain';
 
 type GoalKey = 'fat_loss' | 'muscle_gain' | 'maintain_weight' | 'strength' | 'endurance';
 type DietPreference = 'balanced' | 'high_protein' | 'low_carb' | 'plant_forward';
+type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export type OnboardingActionState = {
   status: 'idle' | 'success' | 'error';
@@ -19,6 +20,7 @@ const GENDERS = ['male', 'female', 'other'] as const;
 const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'athlete'] as const;
 const GOALS = ['fat_loss', 'muscle_gain', 'maintain_weight', 'strength', 'endurance'] as const;
 const DIET_PREFERENCES = ['balanced', 'high_protein', 'low_carb', 'plant_forward'] as const;
+const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
 
 function mapGoal(g: GoalKey): PhysiqueGoal {
   if (g === 'fat_loss' || g === 'endurance') return 'cut';
@@ -102,12 +104,16 @@ export async function completeOnboarding(
   const activityLevelValue = fieldText(formData, 'activityLevel') || 'moderate';
   const goalValue = fieldText(formData, 'goal') || 'maintain_weight';
   const dietPreferenceValue = fieldText(formData, 'dietPreference') || 'balanced';
+  const experienceLevelValue = fieldText(formData, 'experienceLevel') || 'beginner';
 
   if (!isOneOf(genderValue, GENDERS)) fieldErrors.gender = 'Choose a valid gender.';
   if (!isOneOf(activityLevelValue, ACTIVITY_LEVELS)) fieldErrors.activityLevel = 'Choose a valid activity level.';
   if (!isOneOf(goalValue, GOALS)) fieldErrors.goal = 'Choose a valid goal.';
   if (!isOneOf(dietPreferenceValue, DIET_PREFERENCES)) {
     fieldErrors.dietPreference = 'Choose a valid diet preference.';
+  }
+  if (!isOneOf(experienceLevelValue, EXPERIENCE_LEVELS)) {
+    fieldErrors.experienceLevel = 'Choose a valid experience level.';
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -122,8 +128,11 @@ export async function completeOnboarding(
   const activityLevel = activityLevelValue as ActivityLevel;
   const goalKey = goalValue as GoalKey;
   const dietPreference = dietPreferenceValue as DietPreference;
+  const experienceLevel = experienceLevelValue as ExperienceLevel;
   const workoutFrequency = Math.round(workoutFrequencyValue!);
   const physique = mapGoal(goalKey);
+  const waterTargetMl = Math.round(Math.max(1800, Math.min(5000, weightKg! * 35 + workoutFrequency * 150)));
+  const waterGoalGlasses = Math.max(6, Math.min(20, Math.round(waterTargetMl / 250)));
   const targets = calculateMacroTargets({
     weightKg: weightKg!,
     heightCm: heightCm!,
@@ -146,6 +155,7 @@ export async function completeOnboarding(
     activity_level: activityLevel,
     workout_frequency: workoutFrequency,
     diet_preference: dietPreference,
+    experience_level: experienceLevel,
     calorie_target: targets.calories,
     protein_target_g: targets.protein,
     carbs_target_g: targets.carbs,
@@ -153,6 +163,8 @@ export async function completeOnboarding(
     fiber_target_g: targets.fiber ?? 30,
     sugar_target_g: targets.sugar ?? 50,
     sodium_target_mg: targets.sodiumMg ?? 2300,
+    water_target_ml: waterTargetMl,
+    water_goal_glasses: waterGoalGlasses,
     fitness_focus: goalKey,
     onboarding_complete: true,
     updated_at: new Date().toISOString(),
@@ -179,6 +191,18 @@ export async function completeOnboarding(
       message: 'Onboarding saved, but the completion flag did not update. Please try again.',
     };
   }
+
+  await supabase.from('user_settings').upsert(
+    {
+      user_id: user.id,
+      theme: 'dark',
+      unit_system: 'metric',
+      notifications_enabled: true,
+      workout_rest_seconds: experienceLevel === 'beginner' ? 90 : 120,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' }
+  );
 
   revalidatePath('/', 'layout');
   revalidatePath('/dashboard');

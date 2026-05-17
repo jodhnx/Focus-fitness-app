@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
-import { searchFoodsWithFallback } from '@/lib/api/open-food-facts';
+import { fetchProductByBarcode, searchFoodsWithFallback } from '@/lib/api/open-food-facts';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const barcode = searchParams.get('barcode') ?? '';
+  if (barcode.trim().length >= 6) {
+    const item = await fetchProductByBarcode(barcode);
+    return NextResponse.json(item ? [item] : []);
+  }
   const q = searchParams.get('q') ?? '';
   if (q.trim().length < 2) {
     return NextResponse.json([]);

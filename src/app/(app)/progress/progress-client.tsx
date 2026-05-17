@@ -1,0 +1,125 @@
+'use client';
+
+import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+import { Button } from '@/components/ui/button';
+import { Field, TextAreaField } from '@/components/ui/form';
+import { GlassCard } from '@/components/ui/glass-card';
+import { MetricCard } from '@/components/ui/metric-card';
+import type { getProgressData } from '@/lib/app-data';
+import { useAppStore } from '@/stores/app-store';
+
+import { addProgressAction } from '../actions';
+
+type ProgressData = Awaited<ReturnType<typeof getProgressData>>;
+
+export function ProgressClient({ data }: { data: ProgressData }) {
+  const pushToast = useAppStore((state) => state.pushToast);
+  const { entries, workouts, prs, achievements, profile } = data;
+  const latest = entries.at(-1);
+  const workoutChart = workouts.slice(0, 7).reverse().map((workout) => ({
+    day: new Date(workout.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    sets: Array.isArray(workout.exercises) ? workout.exercises.length : 1,
+  }));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-black text-white">Progress</h1>
+        <p className="text-sm text-zinc-400">Weight, body fat, measurements, photos, PRs, streaks and achievements.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard label="Weight" value={latest?.weight_kg ? `${latest.weight_kg} kg` : `${profile.weight_kg} kg`} sub={`target ${profile.target_weight_kg} kg`} />
+        <MetricCard label="Body fat" value={latest?.body_fat_pct ? `${latest.body_fat_pct}%` : '--'} sub="latest entry" tone="muted" />
+        <MetricCard label="Workouts" value={workouts.length} sub="recent sessions" tone="accent" />
+        <MetricCard label="Badges" value={achievements.length} sub={`${profile.xp} XP`} tone="muted" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <GlassCard>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Weight trend</p>
+          <div className="mt-4 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={entries.map((entry) => ({ date: entry.entry_date.slice(5), weight: entry.weight_kg }))}>
+                <XAxis dataKey="date" stroke="#71717a" fontSize={11} />
+                <YAxis stroke="#71717a" fontSize={11} domain={['dataMin - 2', 'dataMax + 2']} />
+                <Tooltip contentStyle={{ background: '#111114', border: '1px solid #27272a', borderRadius: 12 }} />
+                <Area dataKey="weight" stroke="#34d399" fill="#34d39933" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Workout activity</p>
+          <div className="mt-4 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={workoutChart}>
+                <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
+                <Tooltip contentStyle={{ background: '#111114', border: '1px solid #27272a', borderRadius: 12 }} />
+                <Bar dataKey="sets" fill="#34d399" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <GlassCard glow>
+          <p className="text-sm font-bold text-white">Add progress entry</p>
+          <form
+            className="mt-3 grid gap-3 sm:grid-cols-2"
+            action={async (formData) => {
+              const result = await addProgressAction(formData);
+              pushToast({ title: result.ok ? 'Progress saved' : 'Progress error', body: result.message, tone: result.ok ? 'success' : 'error' });
+            }}
+          >
+            <Field label="Date" name="entryDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+            <Field label="Weight (kg)" name="weightKg" type="number" step="0.1" />
+            <Field label="Body fat %" name="bodyFatPct" type="number" step="0.1" />
+            <Field label="Chest (cm)" name="chestCm" type="number" step="0.1" />
+            <Field label="Waist (cm)" name="waistCm" type="number" step="0.1" />
+            <Field label="Hips (cm)" name="hipsCm" type="number" step="0.1" />
+            <Field label="Arms (cm)" name="armsCm" type="number" step="0.1" />
+            <Field label="Progress photo" name="photo" type="file" accept="image/*" />
+            <TextAreaField label="Notes" name="notes" className="sm:col-span-2" />
+            <Button type="submit" className="sm:col-span-2">Save progress</Button>
+          </form>
+        </GlassCard>
+
+        <div className="space-y-4">
+          <GlassCard>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Personal records</p>
+            <div className="mt-3 space-y-2">
+              {prs.length === 0 ? (
+                <p className="text-sm text-zinc-400">PRs appear after logged weighted sets.</p>
+              ) : (
+                prs.map((pr) => (
+                  <div key={pr.id} className="rounded-xl bg-black/30 p-3">
+                    <p className="font-semibold text-white">{pr.exercise_name}</p>
+                    <p className="text-xs text-zinc-500">{pr.weight_kg} kg × {pr.reps}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassCard>
+          <GlassCard>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Achievements</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {achievements.length === 0 ? (
+                <p className="text-sm text-zinc-400">Log meals and workouts to unlock badges.</p>
+              ) : (
+                achievements.map((achievement) => (
+                  <span key={String(achievement.achievement_id)} className="rounded-full bg-brand-accent/15 px-3 py-1 text-xs font-bold text-brand-accent">
+                    {String(achievement.achievement_id)}
+                  </span>
+                ))
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      </div>
+    </div>
+  );
+}

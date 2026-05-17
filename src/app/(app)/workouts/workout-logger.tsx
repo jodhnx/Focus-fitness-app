@@ -1,0 +1,150 @@
+'use client';
+
+import { Timer, Plus } from 'lucide-react';
+import { useMemo, useState, useTransition } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { setCountFromPrescription } from '@/lib/workout/parseTemplateSets';
+import { useAppStore } from '@/stores/app-store';
+
+import { logWorkoutAction } from '../actions';
+
+type TemplateExercise = { name: string; sets: string; muscleGroup?: string };
+type Template = {
+  id: string;
+  name: string;
+  focus: string;
+  durationMin: number;
+  planId?: string;
+  exercises: TemplateExercise[];
+};
+
+type SetRow = { reps: string; weight: string; done: boolean };
+type ExerciseRow = { name: string; muscleGroup?: string; sets: SetRow[] };
+
+export function WorkoutLogger({ template }: { template: Template }) {
+  const [rest, setRest] = useState(0);
+  const [pending, startTransition] = useTransition();
+  const pushToast = useAppStore((state) => state.pushToast);
+  const [exercises, setExercises] = useState<ExerciseRow[]>(() =>
+    template.exercises.map((exercise) => ({
+      name: exercise.name,
+      muscleGroup: exercise.muscleGroup,
+      sets: Array.from({ length: setCountFromPrescription(exercise.sets) }, () => ({ reps: '', weight: '', done: false })),
+    }))
+  );
+
+  const completedSets = useMemo(() => exercises.flatMap((exercise) => exercise.sets).filter((set) => set.done).length, [exercises]);
+
+  function updateSet(exerciseIndex: number, setIndex: number, patch: Partial<SetRow>) {
+    setExercises((current) =>
+      current.map((exercise, ei) =>
+        ei === exerciseIndex
+          ? { ...exercise, sets: exercise.sets.map((set, si) => (si === setIndex ? { ...set, ...patch } : set)) }
+          : exercise
+      )
+    );
+  }
+
+  function finishWorkout() {
+    const formData = new FormData();
+    formData.set('name', template.name);
+    formData.set('templateId', template.id);
+    formData.set('planId', template.planId ?? '');
+    formData.set('exercises', JSON.stringify(exercises));
+    startTransition(async () => {
+      const result = await logWorkoutAction(formData);
+      pushToast({ title: result.ok ? 'Workout saved' : 'Workout error', body: result.message, tone: result.ok ? 'success' : 'error' });
+    });
+  }
+
+  return (
+    <GlassCard glow>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-accent">Active logger</p>
+          <h2 className="text-xl font-black text-white">{template.name}</h2>
+          <p className="text-sm text-zinc-400">{template.focus}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setRest(90);
+              const timer = window.setInterval(() => {
+                setRest((value) => {
+                  if (value <= 1) {
+                    window.clearInterval(timer);
+                    return 0;
+                  }
+                  return value - 1;
+                });
+              }, 1000);
+            }}
+          >
+            <Timer className="h-4 w-4" /> {rest > 0 ? `${rest}s` : 'Rest'}
+          </Button>
+          <Button type="button" disabled={pending || completedSets === 0} onClick={finishWorkout}>
+            Save workout
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        {exercises.map((exercise, exerciseIndex) => (
+          <section key={exercise.name} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-white">{exercise.name}</p>
+                <p className="text-xs text-zinc-500">{exercise.muscleGroup}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg border border-white/10 p-2 text-zinc-300"
+                onClick={() =>
+                  setExercises((current) =>
+                    current.map((item, index) =>
+                      index === exerciseIndex ? { ...item, sets: [...item.sets, { reps: '', weight: '', done: false }] } : item
+                    )
+                  )
+                }
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {exercise.sets.map((set, setIndex) => (
+                <div key={setIndex} className="grid grid-cols-[32px_1fr_1fr_56px] items-center gap-2">
+                  <span className="text-xs font-bold text-zinc-500">{setIndex + 1}</span>
+                  <input
+                    value={set.reps}
+                    onChange={(e) => updateSet(exerciseIndex, setIndex, { reps: e.target.value })}
+                    placeholder="reps"
+                    inputMode="numeric"
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+                  />
+                  <input
+                    value={set.weight}
+                    onChange={(e) => updateSet(exerciseIndex, setIndex, { weight: e.target.value })}
+                    placeholder="kg"
+                    inputMode="decimal"
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => updateSet(exerciseIndex, setIndex, { done: !set.done })}
+                    className={`rounded-xl px-3 py-2 text-xs font-black ${set.done ? 'bg-brand-accent text-brand-bg' : 'bg-white/10 text-zinc-400'}`}
+                  >
+                    Done
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}

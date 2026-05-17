@@ -156,6 +156,18 @@ export function OnboardingForm({ initialError }: { initialError?: string }) {
           disabled={pending}
         />
 
+        <SelectField
+          label="Experience level"
+          name="experienceLevel"
+          options={[
+            ['beginner', 'Beginner'],
+            ['intermediate', 'Intermediate'],
+            ['advanced', 'Advanced'],
+          ]}
+          error={state.fieldErrors?.experienceLevel}
+          disabled={pending}
+        />
+
         <Field
           label="Workouts per week"
           name="workoutFrequency"

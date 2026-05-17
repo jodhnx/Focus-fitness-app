@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { GlassCard } from '@/components/ui/glass-card';
 import { findTrainingPlan, templatesForPlan } from '@/data/training-plans';
+import { WorkoutLogger } from '../workout-logger';
 
 export default async function PlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,15 +21,18 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       <div className="space-y-3">
         {templates.map((t) => (
           <GlassCard key={t.id}>
-            <p className="font-bold text-white">{t.name}</p>
-            <p className="text-xs text-zinc-500">{t.focus}</p>
-            <p className="mt-2 text-xs text-zinc-400">Muscles: {t.muscleGroups.join(', ')}</p>
-            <p className="mt-3 text-xs text-zinc-500">
-              Session logger with sets, reps, weight, rest timer &amp; PRs — extend with Supabase `workouts` / `workout_sets`.
-            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="font-bold text-white">{t.name}</p>
+                <p className="text-xs text-zinc-500">{t.focus}</p>
+                <p className="mt-2 text-xs text-zinc-400">Muscles: {t.muscleGroups.join(', ')}</p>
+              </div>
+              <p className="text-xs font-bold text-brand-accent">{t.durationMin} min</p>
+            </div>
           </GlassCard>
         ))}
       </div>
+      {templates[0] ? <WorkoutLogger template={templates[0]} /> : null}
     </div>
   );
 }

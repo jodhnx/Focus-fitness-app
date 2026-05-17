@@ -1,10 +1,31 @@
 {
   "name": "ApexFit",
   "short_name": "ApexFit",
-  "description": "Premium fitness & nutrition — calories, macros, workouts, recipes.",
+  "description": "Premium fitness and nutrition tracking: meals, macros, workouts, recipes and progress.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#050506",
   "theme_color": "#050506",
-  "orientation": "portrait-primary"
+  "orientation": "portrait-primary",
+  "categories": ["fitness", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Log food", "url": "/nutrition", "description": "Open the nutrition diary" },
+    { "name": "Start workout", "url": "/workouts", "description": "Open workout plans and logger" },
+    { "name": "Progress", "url": "/progress", "description": "Track weight and PRs" }
+  ]
 }
