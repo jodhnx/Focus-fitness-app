@@ -1,6 +1,7 @@
 import type { FoodCatalogItem } from '@/types/domain';
 
 const BASE = 'https://world.openfoodfacts.org';
+const USER_AGENT = 'ApexFit/2.0 (https://apexfit.app)';
 
 type OffNutriments = {
   'energy-kcal_100g'?: number;
@@ -44,11 +45,7 @@ function mapProduct(p: OffProduct): FoodCatalogItem | null {
   };
 }
 
-/** Search foods — biased toward Austria, Germany, Switzerland (DACH) */
-export async function searchOpenFoodFacts(
-  query: string,
-  options?: { page?: number; pageSize?: number }
-): Promise<FoodCatalogItem[]> {
+async function searchCountry(query: string, country: string, options?: { page?: number; pageSize?: number }) {
   const q = query.trim();
   if (!q) return [];
 
@@ -62,15 +59,17 @@ export async function searchOpenFoodFacts(
     json: '1',
     page: String(page),
     page_size: String(pageSize),
+    fields: 'code,product_name,brands,serving_size,nutriments,countries_tags',
     // Prefer DACH products
     tagtype_0: 'countries',
     tag_contains_0: 'contains',
-    tag_0: 'austria',
+    tag_0: country,
   });
 
   const url = `${BASE}/cgi/search.pl?${params.toString()}`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'FitnessApp/1.0 (Expo React Native)' },
+    headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.6' },
+    next: { revalidate: 3600 },
   });
 
   if (!res.ok) throw new Error('Food search failed. Try again.');
@@ -82,6 +81,24 @@ export async function searchOpenFoodFacts(
     if (mapped) items.push(mapped);
   }
   return items;
+}
+
+/** Search foods — biased toward Austria, Germany, Switzerland (DACH) */
+export async function searchOpenFoodFacts(
+  query: string,
+  options?: { page?: number; pageSize?: number }
+): Promise<FoodCatalogItem[]> {
+  const [austria, germany, switzerland] = await Promise.all([
+    searchCountry(query, 'austria', options),
+    searchCountry(query, 'germany', options),
+    searchCountry(query, 'switzerland', { ...options, pageSize: 12 }),
+  ]);
+  const seen = new Set<string>();
+  return [...austria, ...germany, ...switzerland].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
 
 /** Fallback search without country filter (broader EU) */
@@ -99,7 +116,8 @@ export async function searchOpenFoodFactsGlobal(query: string): Promise<FoodCata
   });
 
   const res = await fetch(`${BASE}/cgi/search.pl?${params.toString()}`, {
-    headers: { 'User-Agent': 'FitnessApp/1.0 (Expo React Native)' },
+    headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.6' },
+    next: { revalidate: 3600 },
   });
   if (!res.ok) return [];
 
@@ -112,7 +130,8 @@ export async function fetchProductByBarcode(barcode: string): Promise<FoodCatalo
   if (!code) return null;
 
   const res = await fetch(`${BASE}/api/v2/product/${code}.json`, {
-    headers: { 'User-Agent': 'FitnessApp/1.0 (Expo React Native)' },
+    headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.6' },
+    next: { revalidate: 3600 },
   });
   if (!res.ok) return null;
 

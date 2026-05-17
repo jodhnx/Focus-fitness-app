@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { GlassCard } from '@/components/ui/glass-card';
+import { exerciseCatalog } from '@/data/exercises';
 import { findTrainingPlan, templatesForPlan } from '@/data/training-plans';
 import { WorkoutLogger } from '../workout-logger';
 
@@ -32,7 +33,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           </GlassCard>
         ))}
       </div>
-      {templates[0] ? <WorkoutLogger template={templates[0]} /> : null}
+      {templates[0] ? <WorkoutLogger template={templates[0]} exerciseCatalog={exerciseCatalog} /> : null}
     </div>
   );
 }

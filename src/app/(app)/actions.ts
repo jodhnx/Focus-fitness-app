@@ -44,6 +44,8 @@ export async function logFoodAction(formData: FormData): Promise<ActionResult> {
     const { supabase, userId: uid } = await userId();
     const mealType = text(formData, 'mealType', 'lunch');
     const servings = Math.max(0.1, number(formData, 'servings', 1));
+    const servingGrams = Math.max(1, number(formData, 'servingGrams', 100));
+    const amountGrams = Math.max(0, number(formData, 'amountGrams', 0));
     const name = text(formData, 'name');
     if (!name) return { ok: false, message: 'Food name is required.' };
 
@@ -75,12 +77,12 @@ export async function logFoodAction(formData: FormData): Promise<ActionResult> {
       .single();
     if (mealError || !meal) return { ok: false, message: mealError?.message ?? 'Could not create meal.' };
 
-    const multiplier = servings;
+    const multiplier = amountGrams > 0 ? amountGrams / 100 : (servings * servingGrams) / 100;
     const { error: itemError } = await supabase.from('meal_items').insert({
       meal_id: (meal as { id: string }).id,
       food_id: (food as { id: string }).id,
       name_snapshot: name,
-      servings,
+      servings: amountGrams > 0 ? amountGrams / servingGrams : servings,
       calories: Math.round(foodPayload.calories * multiplier),
       protein: Math.round(foodPayload.protein * multiplier * 10) / 10,
       carbs: Math.round(foodPayload.carbs * multiplier * 10) / 10,
@@ -169,7 +171,12 @@ export async function logWorkoutAction(formData: FormData): Promise<ActionResult
     const templateId = text(formData, 'templateId') || null;
     const planId = text(formData, 'planId') || null;
     const rawExercises = text(formData, 'exercises', '[]');
-    const exercises = JSON.parse(rawExercises) as { name: string; muscleGroup?: string; sets: { reps: string; weight: string; done: boolean }[] }[];
+    const exercises = JSON.parse(rawExercises) as {
+      name: string;
+      muscleGroup?: string;
+      notes?: string;
+      sets: { reps: string; weight: string; restSeconds?: string; done: boolean }[];
+    }[];
     const completedAt = new Date().toISOString();
 
     const { data: workout, error } = await supabase
@@ -200,6 +207,8 @@ export async function logWorkoutAction(formData: FormData): Promise<ActionResult
           weight_kg: Number.parseFloat(set.weight) || null,
           reps_display: set.reps,
           weight_display: set.weight,
+          rest_seconds: Number.parseInt(set.restSeconds ?? '90', 10) || null,
+          notes: exercise.notes ?? null,
           completed: true,
         }))
     );

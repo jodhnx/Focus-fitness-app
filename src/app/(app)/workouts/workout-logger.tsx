@@ -1,12 +1,14 @@
 'use client';
 
-import { Timer, Plus } from 'lucide-react';
+import { Timer, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Field, SelectField, TextAreaField } from '@/components/ui/form';
 import { GlassCard } from '@/components/ui/glass-card';
 import { setCountFromPrescription } from '@/lib/workout/parseTemplateSets';
 import { useAppStore } from '@/stores/app-store';
+import type { ExerciseCatalogItem } from '@/types/domain';
 
 import { logWorkoutAction } from '../actions';
 
@@ -20,18 +22,19 @@ type Template = {
   exercises: TemplateExercise[];
 };
 
-type SetRow = { reps: string; weight: string; done: boolean };
-type ExerciseRow = { name: string; muscleGroup?: string; sets: SetRow[] };
+type SetRow = { reps: string; weight: string; restSeconds: string; done: boolean };
+type ExerciseRow = { name: string; muscleGroup?: string; notes?: string; sets: SetRow[] };
 
-export function WorkoutLogger({ template }: { template: Template }) {
+export function WorkoutLogger({ template, exerciseCatalog = [] }: { template: Template; exerciseCatalog?: ExerciseCatalogItem[] }) {
   const [rest, setRest] = useState(0);
+  const [selectedExercise, setSelectedExercise] = useState(exerciseCatalog[0]?.id ?? '');
   const [pending, startTransition] = useTransition();
   const pushToast = useAppStore((state) => state.pushToast);
   const [exercises, setExercises] = useState<ExerciseRow[]>(() =>
     template.exercises.map((exercise) => ({
       name: exercise.name,
       muscleGroup: exercise.muscleGroup,
-      sets: Array.from({ length: setCountFromPrescription(exercise.sets) }, () => ({ reps: '', weight: '', done: false })),
+      sets: Array.from({ length: setCountFromPrescription(exercise.sets) }, () => ({ reps: '', weight: '', restSeconds: '90', done: false })),
     }))
   );
 
@@ -45,6 +48,23 @@ export function WorkoutLogger({ template }: { template: Template }) {
           : exercise
       )
     );
+  }
+
+  function updateExercise(exerciseIndex: number, patch: Partial<ExerciseRow>) {
+    setExercises((current) => current.map((exercise, index) => (index === exerciseIndex ? { ...exercise, ...patch } : exercise)));
+  }
+
+  function addExercise() {
+    const found = exerciseCatalog.find((exercise) => exercise.id === selectedExercise);
+    if (!found) return;
+    setExercises((current) => [
+      ...current,
+      {
+        name: found.name,
+        muscleGroup: found.muscleGroup,
+        sets: [{ reps: '', weight: '', restSeconds: '90', done: false }],
+      },
+    ]);
   }
 
   function finishWorkout() {
@@ -93,6 +113,21 @@ export function WorkoutLogger({ template }: { template: Template }) {
       </div>
 
       <div className="mt-5 space-y-5">
+        {exerciseCatalog.length > 0 ? (
+          <div className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3 sm:grid-cols-[1fr_auto]">
+            <SelectField label="Add exercise" name="exercise" value={selectedExercise} onChange={(event) => setSelectedExercise(event.target.value)}>
+              {exerciseCatalog.map((exercise) => (
+                <option key={exercise.id} value={exercise.id}>
+                  {exercise.name} · {exercise.muscleGroup}
+                </option>
+              ))}
+            </SelectField>
+            <Button type="button" variant="secondary" className="self-end" onClick={addExercise}>
+              <Plus className="h-4 w-4" /> Add
+            </Button>
+          </div>
+        ) : null}
+
         {exercises.map((exercise, exerciseIndex) => (
           <section key={exercise.name} className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="mb-3 flex items-center justify-between">
@@ -106,7 +141,7 @@ export function WorkoutLogger({ template }: { template: Template }) {
                 onClick={() =>
                   setExercises((current) =>
                     current.map((item, index) =>
-                      index === exerciseIndex ? { ...item, sets: [...item.sets, { reps: '', weight: '', done: false }] } : item
+                      index === exerciseIndex ? { ...item, sets: [...item.sets, { reps: '', weight: '', restSeconds: '90', done: false }] } : item
                     )
                   )
                 }
@@ -114,30 +149,40 @@ export function WorkoutLogger({ template }: { template: Template }) {
                 <Plus className="h-4 w-4" />
               </button>
             </div>
+            <TextAreaField
+              label="Exercise notes"
+              name={`notes-${exerciseIndex}`}
+              value={exercise.notes ?? ''}
+              onChange={(event) => updateExercise(exerciseIndex, { notes: event.target.value })}
+              placeholder="Cues, pain, tempo, setup..."
+              className="mb-3"
+            />
             <div className="space-y-2">
               {exercise.sets.map((set, setIndex) => (
-                <div key={setIndex} className="grid grid-cols-[32px_1fr_1fr_56px] items-center gap-2">
+                <div key={setIndex} className="grid grid-cols-[28px_1fr_1fr_1fr_46px_40px] items-center gap-2 max-sm:grid-cols-2">
                   <span className="text-xs font-bold text-zinc-500">{setIndex + 1}</span>
-                  <input
-                    value={set.reps}
-                    onChange={(e) => updateSet(exerciseIndex, setIndex, { reps: e.target.value })}
-                    placeholder="reps"
-                    inputMode="numeric"
-                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
-                  />
-                  <input
-                    value={set.weight}
-                    onChange={(e) => updateSet(exerciseIndex, setIndex, { weight: e.target.value })}
-                    placeholder="kg"
-                    inputMode="decimal"
-                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
-                  />
+                  <input value={set.reps} onChange={(e) => updateSet(exerciseIndex, setIndex, { reps: e.target.value })} placeholder="reps" inputMode="numeric" className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none" />
+                  <input value={set.weight} onChange={(e) => updateSet(exerciseIndex, setIndex, { weight: e.target.value })} placeholder="kg" inputMode="decimal" className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none" />
+                  <input value={set.restSeconds} onChange={(e) => updateSet(exerciseIndex, setIndex, { restSeconds: e.target.value })} placeholder="rest" inputMode="numeric" className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none" />
                   <button
                     type="button"
                     onClick={() => updateSet(exerciseIndex, setIndex, { done: !set.done })}
                     className={`rounded-xl px-3 py-2 text-xs font-black ${set.done ? 'bg-brand-accent text-brand-bg' : 'bg-white/10 text-zinc-400'}`}
                   >
                     Done
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExercises((current) =>
+                        current.map((item, index) =>
+                          index === exerciseIndex ? { ...item, sets: item.sets.filter((_, i) => i !== setIndex) } : item
+                        )
+                      )
+                    }
+                    className="rounded-xl bg-red-500/10 px-3 py-2 text-red-300"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}

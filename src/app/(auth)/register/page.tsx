@@ -14,21 +14,31 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     setLoading(true);
     try {
       const supabase = createClient();
-      const { error: signErr } = await supabase.auth.signUp({
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const { data, error: signErr } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { display_name: displayName } },
+        options: {
+          data: { display_name: displayName },
+          emailRedirectTo: `${origin}/auth/callback?next=/onboarding`,
+        },
       });
       if (signErr) {
         setError(signErr.message);
+        return;
+      }
+      if (!data.session) {
+        setMessage('Account created. Check your email to confirm your account, then sign in.');
         return;
       }
       router.push('/onboarding');
@@ -74,6 +84,7 @@ export default function RegisterPage() {
           className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none ring-brand-accent/40 focus:ring-2"
         />
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
+        {message ? <p className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-sm text-emerald-200">{message}</p> : null}
         <button
           type="submit"
           disabled={loading}

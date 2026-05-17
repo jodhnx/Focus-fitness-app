@@ -171,12 +171,31 @@ export async function getDashboardData() {
 
 export async function getProgressData() {
   const { supabase, user, profile } = await getCurrentUserAndProfile();
-  const [{ data: entries }, { data: prs }, { data: workouts }, { data: achievements }] = await Promise.all([
+  const since = new Date();
+  since.setDate(since.getDate() - 13);
+  const [{ data: entries }, { data: prs }, { data: workouts }, { data: achievements }, { data: meals }] = await Promise.all([
     supabase.from('progress_entries').select('*').eq('user_id', user.id).order('entry_date', { ascending: true }),
     supabase.from('personal_records').select('*').eq('user_id', user.id).order('achieved_at', { ascending: false }).limit(10),
     supabase.from('workouts').select('*').eq('user_id', user.id).order('started_at', { ascending: false }).limit(20),
     supabase.from('achievement_unlocks').select('achievement_id, unlocked_at').eq('user_id', user.id),
+    supabase
+      .from('meals')
+      .select('logged_at, meal_items(calories, protein, carbs, fat)')
+      .eq('user_id', user.id)
+      .gte('logged_at', since.toISOString())
+      .order('logged_at', { ascending: true }),
   ]);
+
+  const nutritionHistory = lastNDates(14).map((date) => {
+    const items = ((meals ?? []) as { logged_at: string; meal_items: MealItemRow[] }[])
+      .filter((meal) => meal.logged_at.startsWith(date))
+      .flatMap((meal) => meal.meal_items ?? []);
+    return {
+      day: date.slice(5),
+      calories: items.reduce((sum, item) => sum + Number(item.calories ?? 0), 0),
+      protein: items.reduce((sum, item) => sum + Number(item.protein ?? 0), 0),
+    };
+  });
 
   return {
     profile,
@@ -184,5 +203,6 @@ export async function getProgressData() {
     prs: (prs ?? []) as { id: string; exercise_name: string; weight_kg: number; reps: number; achieved_at: string }[],
     workouts: (workouts ?? []) as WorkoutRow[],
     achievements: achievements ?? [],
+    nutritionHistory,
   };
 }

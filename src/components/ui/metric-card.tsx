@@ -40,3 +40,50 @@ export function ProgressBar({ value, max, className }: { value: number; max: num
     </div>
   );
 }
+
+export function ProgressRing({
+  value,
+  max,
+  label,
+  sub,
+  size = 132,
+  stroke = 12,
+  color = '#34d399',
+}: {
+  value: number;
+  max: number;
+  label: string;
+  sub?: string;
+  size?: number;
+  stroke?: number;
+  color?: string;
+}) {
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
+  const dash = circumference * (1 - pct);
+
+  return (
+    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeLinecap="round"
+          strokeWidth={stroke}
+          strokeDasharray={circumference}
+          strokeDashoffset={dash}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute text-center">
+        <p className="text-2xl font-black text-white">{label}</p>
+        {sub ? <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{sub}</p> : null}
+      </div>
+    </div>
+  );
+}

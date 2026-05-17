@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { GlassCard } from '@/components/ui/glass-card';
-import { MetricCard, ProgressBar } from '@/components/ui/metric-card';
+import { MetricCard, ProgressBar, ProgressRing } from '@/components/ui/metric-card';
 import { getDashboardData } from '@/lib/app-data';
 import { logWaterAction } from '../actions';
 
@@ -17,9 +17,10 @@ export default async function DashboardPage({
   const proteinTarget = profile.protein_target_g ?? 160;
   const name = profile.display_name ?? 'Athlete';
   const goalDelta = latestProgress?.weight_kg ? Number(profile.target_weight_kg) - Number(latestProgress.weight_kg) : null;
+  const caloriesRemaining = Math.max(0, calorieTarget - totals.calories);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-7">
       {sp.onboarding === 'success' ? (
         <div
           role="status"
@@ -29,33 +30,57 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-white">Hey, {name}</h1>
-        <p className="text-sm text-zinc-400">Today is live — meals, water, workouts and progress are synced to Supabase.</p>
-      </div>
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.03))] p-5 shadow-glass md:p-7">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-accent">Today</p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-white md:text-5xl">Hey, {name}</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-300">
+              Your live overview: calories remaining, macros, hydration, workouts, weight trend and daily consistency.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <MiniStat label="Remaining" value={`${Math.round(caloriesRemaining)}`} sub="kcal" />
+              <MiniStat label="Eaten" value={`${Math.round(totals.calories)}`} sub="kcal" />
+              <MiniStat label="Protein" value={`${Math.round(totals.protein)}g`} sub={`${proteinTarget}g goal`} />
+              <MiniStat label="Level" value={profile.level} sub={`${profile.xp} XP`} />
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-5">
+            <ProgressRing
+              value={totals.calories}
+              max={calorieTarget}
+              label={`${Math.round((totals.calories / calorieTarget) * 100)}%`}
+              sub="calories"
+              size={154}
+            />
+            <div className="space-y-2">
+              <Link href="/nutrition" className="block rounded-2xl bg-brand-accent px-5 py-3 text-center text-sm font-black text-brand-bg shadow-lg shadow-emerald-500/20">
+                Quick add meal
+              </Link>
+              <Link href="/workouts" className="block rounded-2xl border border-white/10 bg-black/25 px-5 py-3 text-center text-sm font-black text-white">
+                Start workout
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Calories" value={`${Math.round(totals.calories)}`} sub={`of ${calorieTarget} kcal`} />
+        <MetricCard label="Calories remaining" value={`${Math.round(caloriesRemaining)}`} sub={`${Math.round(totals.calories)} eaten / ${calorieTarget}`} />
         <MetricCard label="Protein" value={`${Math.round(totals.protein)}g`} sub={`of ${proteinTarget}g`} tone="protein" />
-        <MetricCard label="Streak" value={`${profile.workout_streak_current}d`} sub={`${profile.xp} XP · level ${profile.level}`} tone="muted" />
+        <MetricCard label="Workout streak" value={`${profile.workout_streak_current}d`} sub={`best ${profile.workout_streak_best}d`} tone="muted" />
       </div>
 
       <GlassCard glow>
-        <div className="flex items-start justify-between gap-4">
+        <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-center">
+          <div className="flex justify-center">
+            <ProgressRing value={totals.waterMl} max={profile.water_target_ml} label={`${Math.round((totals.waterMl / profile.water_target_ml) * 100)}%`} sub="hydrated" color="#22d3ee" />
+          </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Daily goals</p>
-            <h2 className="mt-1 text-xl font-black text-white">Fuel, hydrate, train</h2>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/nutrition" className="rounded-xl bg-brand-accent px-3 py-2 text-xs font-black text-brand-bg">
-              Add meal
-            </Link>
-            <Link href="/workouts" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white">
-              Workout
-            </Link>
-          </div>
-        </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <h2 className="mt-1 text-xl font-black text-white">Stay on track</h2>
+            <p className="mt-1 text-sm text-zinc-400">Fast actions for the small wins that keep the streak alive.</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div>
             <div className="mb-1 flex justify-between text-xs text-zinc-400">
               <span>Calories</span>
@@ -70,19 +95,21 @@ export default async function DashboardPage({
             </div>
             <ProgressBar value={totals.waterMl} max={profile.water_target_ml} />
           </div>
+            </div>
+            <form
+              action={async (formData) => {
+                'use server';
+                await logWaterAction(formData);
+              }}
+              className="mt-4 flex gap-2"
+            >
+              <input type="hidden" name="volumeMl" value="250" />
+              <button type="submit" className="rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-bold text-cyan-200">
+                +250 ml water
+              </button>
+            </form>
+          </div>
         </div>
-        <form
-          action={async (formData) => {
-            'use server';
-            await logWaterAction(formData);
-          }}
-          className="mt-4 flex gap-2"
-        >
-          <input type="hidden" name="volumeMl" value="250" />
-          <button type="submit" className="rounded-xl bg-cyan-400/15 px-3 py-2 text-xs font-bold text-cyan-200">
-            +250 ml water
-          </button>
-        </form>
       </GlassCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -162,6 +189,16 @@ function Macro({ label, value, max, className }: { label: string; value: number;
       <div className="h-2 rounded-full bg-white/10">
         <div className={`h-full rounded-full ${className}`} style={{ width: `${pct}%` }} />
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</p>
+      <p className="mt-1 text-2xl font-black text-white">{value}</p>
+      <p className="text-xs text-zinc-500">{sub}</p>
     </div>
   );
 }

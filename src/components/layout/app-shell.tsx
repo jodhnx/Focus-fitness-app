@@ -11,9 +11,10 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -41,12 +42,16 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const navItems = useMemo(() => nav, [nav]);
 
   async function logout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    startTransition(() => {
+      router.replace('/login');
+      router.refresh();
+    });
   }
 
   return (
@@ -57,7 +62,7 @@ export function AppShell({
           Apex<span className="text-brand-accent">Fit</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
-          {nav.map((item) => {
+          {navItems.map((item) => {
             const Icon = icons[item.icon];
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -109,14 +114,33 @@ export function AppShell({
           </button>
         </header>
 
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+        <main className="flex-1 px-4 py-5 md:px-8 md:py-7">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
 
       {/* Mobile drawer */}
-      {open ? (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <button type="button" className="absolute inset-0 bg-black/70" aria-label="Close menu" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-0 flex h-full w-[min(88vw,320px)] flex-col border-l border-white/10 bg-brand-surface p-4 shadow-2xl">
+      <AnimatePresence>
+        {open ? (
+          <motion.div className="fixed inset-0 z-40 md:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <button type="button" className="absolute inset-0 bg-black/60" aria-label="Close menu" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+              className="absolute right-0 top-0 flex h-full w-[min(88vw,320px)] flex-col border-l border-white/10 bg-brand-surface p-4 shadow-2xl"
+            >
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-bold text-white">Menu</span>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-zinc-400">
@@ -124,7 +148,7 @@ export function AppShell({
               </button>
             </div>
             <nav className="flex flex-col gap-1">
-              {nav.map((item) => {
+              {navItems.map((item) => {
                 const Icon = icons[item.icon];
                 const active = pathname === item.href;
                 return (
@@ -158,13 +182,14 @@ export function AppShell({
                 Log out
               </button>
             </nav>
-          </div>
-        </div>
-      ) : null}
+          </motion.div>
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-white/10 bg-brand-bg/95 pb-safe pt-2 backdrop-blur-xl md:hidden">
-        {nav.slice(0, 5).map((item) => {
+        {navItems.slice(0, 5).map((item) => {
           const Icon = icons[item.icon];
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
@@ -173,7 +198,8 @@ export function AppShell({
               href={item.href}
               className={cn(
                 'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-bold uppercase tracking-wide',
-                active ? 'text-brand-accent' : 'text-zinc-500'
+                active ? 'text-brand-accent' : 'text-zinc-500',
+                isPending && 'pointer-events-none opacity-80'
               )}
             >
               <Icon className="h-5 w-5" />

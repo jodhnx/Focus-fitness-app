@@ -32,9 +32,24 @@ export function RecipesClient({ recipes }: { recipes: Recipe[] }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white">Recipes</h1>
-        <p className="text-sm text-zinc-400">Search healthy, bulking, cutting, meal-prep and high-protein recipes.</p>
+      <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.2),transparent_32%),rgba(255,255,255,.05)] p-5 shadow-glass">
+        <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-accent">Recipe library</p>
+        <h1 className="mt-2 text-3xl font-black text-white">Cook for your goal</h1>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">Search healthy, bulking, cutting, meal-prep and high-protein recipes, then save favorites or log a recipe as a meal.</p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-2xl bg-black/25 p-3">
+            <p className="text-2xl font-black text-white">{recipes.length}</p>
+            <p className="text-[10px] uppercase tracking-widest text-zinc-500">recipes</p>
+          </div>
+          <div className="rounded-2xl bg-black/25 p-3">
+            <p className="text-2xl font-black text-brand-accent">{recipes.filter((r) => r.tags.includes('high-protein')).length}</p>
+            <p className="text-[10px] uppercase tracking-widest text-zinc-500">protein</p>
+          </div>
+          <div className="rounded-2xl bg-black/25 p-3">
+            <p className="text-2xl font-black text-white">{new Set(recipes.map((r) => r.category)).size}</p>
+            <p className="text-[10px] uppercase tracking-widest text-zinc-500">categories</p>
+          </div>
+        </div>
       </div>
 
       <GlassCard>

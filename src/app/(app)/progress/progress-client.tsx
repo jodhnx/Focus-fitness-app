@@ -1,6 +1,6 @@
 'use client';
 
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Button } from '@/components/ui/button';
 import { Field, TextAreaField } from '@/components/ui/form';
@@ -36,6 +36,30 @@ export function ProgressClient({ data }: { data: ProgressData }) {
         <MetricCard label="Badges" value={achievements.length} sub={`${profile.xp} XP`} tone="muted" />
       </div>
 
+      <GlassCard glow>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Workout streak</p>
+            <p className="mt-2 text-4xl font-black text-brand-accent">{profile.workout_streak_current}d</p>
+            <p className="text-sm text-zinc-400">best {profile.workout_streak_best}d</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Goal distance</p>
+            <p className="mt-2 text-4xl font-black text-white">
+              {latest?.weight_kg ? `${Math.abs(Number(latest.weight_kg) - Number(profile.target_weight_kg)).toFixed(1)}kg` : '--'}
+            </p>
+            <p className="text-sm text-zinc-400">to target weight</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Macro adherence</p>
+            <p className="mt-2 text-4xl font-black text-white">
+              {Math.round((data.nutritionHistory.filter((d) => d.protein >= profile.protein_target_g * 0.8).length / Math.max(1, data.nutritionHistory.length)) * 100)}%
+            </p>
+            <p className="text-sm text-zinc-400">protein days above 80%</p>
+          </div>
+        </div>
+      </GlassCard>
+
       <div className="grid gap-4 xl:grid-cols-2">
         <GlassCard>
           <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Weight trend</p>
@@ -52,18 +76,32 @@ export function ProgressClient({ data }: { data: ProgressData }) {
         </GlassCard>
 
         <GlassCard>
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Workout activity</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Calories history</p>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={workoutChart}>
+              <LineChart data={data.nutritionHistory}>
                 <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
+                <YAxis stroke="#71717a" fontSize={11} />
                 <Tooltip contentStyle={{ background: '#111114', border: '1px solid #27272a', borderRadius: 12 }} />
-                <Bar dataKey="sets" fill="#34d399" radius={[8, 8, 0, 0]} />
-              </BarChart>
+                <Line type="monotone" dataKey="calories" stroke="#34d399" strokeWidth={3} dot={false} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </GlassCard>
       </div>
+
+      <GlassCard>
+        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Workout activity</p>
+        <div className="mt-4 h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={workoutChart}>
+              <XAxis dataKey="day" stroke="#71717a" fontSize={11} />
+              <Tooltip contentStyle={{ background: '#111114', border: '1px solid #27272a', borderRadius: 12 }} />
+              <Bar dataKey="sets" fill="#34d399" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </GlassCard>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <GlassCard glow>

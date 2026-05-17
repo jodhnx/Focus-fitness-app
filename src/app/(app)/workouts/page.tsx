@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { GlassCard } from '@/components/ui/glass-card';
+import { exerciseCatalog } from '@/data/exercises';
 import { trainingPlans, templatesForPlan } from '@/data/training-plans';
 import { getCurrentUserAndProfile, type WorkoutRow } from '@/lib/app-data';
 
@@ -8,6 +9,7 @@ export default async function WorkoutsPage() {
   const { supabase, user } = await getCurrentUserAndProfile();
   const { data } = await supabase.from('workouts').select('*').eq('user_id', user.id).order('started_at', { ascending: false }).limit(6);
   const workouts = (data ?? []) as WorkoutRow[];
+  const muscles = [...new Set(exerciseCatalog.map((exercise) => exercise.muscleGroup))];
 
   return (
     <div className="space-y-6">
@@ -31,6 +33,25 @@ export default async function WorkoutsPage() {
             ))}
           </div>
         )}
+      </GlassCard>
+
+      <GlassCard>
+        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Exercise database</p>
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {muscles.map((muscle) => (
+            <span key={muscle} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+              {muscle}
+            </span>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {exerciseCatalog.slice(0, 18).map((exercise) => (
+            <div key={exercise.id} className="rounded-xl bg-black/25 p-3">
+              <p className="text-sm font-bold text-white">{exercise.name}</p>
+              <p className="text-xs text-zinc-500">{exercise.muscleGroup}</p>
+            </div>
+          ))}
+        </div>
       </GlassCard>
 
       <div className="space-y-4">

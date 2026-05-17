@@ -25,10 +25,16 @@ async function searchFood(q: string): Promise<FoodCatalogItem[]> {
   return res.json();
 }
 
+function gramsFromServingLabel(label: string) {
+  const match = label.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+  return match?.[1] ? Number(match[1].replace(',', '.')) : 100;
+}
+
 export function NutritionClient({ data }: { data: NutritionData }) {
   const [q, setQ] = useState('');
   const [mealType, setMealType] = useState<MealType>('breakfast');
   const [servings, setServings] = useState('1');
+  const [amountGrams, setAmountGrams] = useState('100');
   const [pending, startTransition] = useTransition();
   const pushToast = useAppStore((state) => state.pushToast);
   const { profile, meals, totals, water, favorites, recentFoods } = data;
@@ -53,6 +59,8 @@ export function NutritionClient({ data }: { data: NutritionData }) {
     const formData = new FormData();
     formData.set('mealType', selectedMealType);
     formData.set('servings', servings);
+    formData.set('amountGrams', amountGrams);
+    formData.set('servingGrams', String(gramsFromServingLabel(item.servingLabel)));
     formData.set('name', item.name);
     formData.set('brand', item.brand ?? '');
     formData.set('servingLabel', item.servingLabel);
@@ -82,6 +90,15 @@ export function NutritionClient({ data }: { data: NutritionData }) {
         <MetricCard label="Fat" value={`${Math.round(totals.fat)}g`} sub={`of ${profile.fat_target_g}g`} tone="fat" />
       </div>
 
+      <GlassCard>
+        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Macro split today</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <MacroPill label="Protein" value={totals.protein} max={profile.protein_target_g} className="bg-brand-protein" />
+          <MacroPill label="Carbs" value={totals.carbs} max={profile.carbs_target_g} className="bg-brand-carbs" />
+          <MacroPill label="Fat" value={totals.fat} max={profile.fat_target_g} className="bg-brand-fat" />
+        </div>
+      </GlassCard>
+
       <GlassCard glow>
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="font-bold text-white">Water</span>
@@ -110,7 +127,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
           <GlassCard>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="grid gap-3 md:grid-cols-[1fr_150px_120px_120px]">
               <label className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
                 {/^\d{6,}$/.test(q) ? <ScanLine className="h-4 w-4 text-brand-accent" /> : <Search className="h-4 w-4 text-zinc-500" />}
                 <input
@@ -120,14 +137,15 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                   className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                 />
               </label>
-              <SelectField label="Meal" name="mealType" value={mealType} onChange={(e) => setMealType(e.target.value as MealType)} className="sm:w-40">
+              <SelectField label="Meal" name="mealType" value={mealType} onChange={(e) => setMealType(e.target.value as MealType)}>
                 {mealTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
               </SelectField>
-              <Field label="Servings" name="servings" type="number" min={0.1} step={0.1} value={servings} onChange={(e) => setServings(e.target.value)} className="sm:w-28" />
+              <Field label="Servings" name="servings" type="number" min={0.1} step={0.1} value={servings} onChange={(e) => setServings(e.target.value)} />
+              <Field label="Grams" name="amountGrams" type="number" min={1} step={1} value={amountGrams} onChange={(e) => setAmountGrams(e.target.value)} />
             </div>
             <p className="mt-2 text-xs text-zinc-500">
               {isFetching ? 'Searching Open Food Facts...' : 'Austrian/German products are prioritized when available. Barcode entry works as a web fallback.'}
@@ -138,16 +156,21 @@ export function NutritionClient({ data }: { data: NutritionData }) {
             <div className="space-y-2">
               {foods.map((item) => (
                 <GlassCard key={item.id} className="!p-3">
-                  <div className="flex justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                    <div className="min-w-0">
                       <p className="font-bold text-white">{item.name}</p>
                       {item.brand ? <p className="text-xs text-zinc-500">{item.brand}</p> : null}
-                      <p className="mt-1 text-xs text-zinc-400">
-                        {item.calories} kcal · P{item.protein} C{item.carbs} F{item.fat}{' '}
-                        <span className="text-zinc-600">/ {item.servingLabel}</span>
-                      </p>
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
+                        <Nutrient label="kcal" value={item.calories} />
+                        <Nutrient label="protein" value={`${item.protein}g`} />
+                        <Nutrient label="carbs" value={`${item.carbs}g`} />
+                        <Nutrient label="fat" value={`${item.fat}g`} />
+                        <Nutrient label="fiber" value={`${item.fiber ?? 0}g`} />
+                        <Nutrient label="sugar" value={`${item.sugar ?? 0}g`} />
+                      </div>
+                      <p className="mt-2 text-xs text-zinc-600">Serving: {item.servingLabel} · barcode {item.barcode ?? 'n/a'}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"
                         disabled={pending}
@@ -168,7 +191,7 @@ export function NutritionClient({ data }: { data: NutritionData }) {
                         <Heart className="h-4 w-4" />
                       </button>
                       <Button type="button" onClick={() => submitFood(item)} disabled={logMutation.isPending}>
-                        Log
+                        Add as meal
                       </Button>
                     </div>
                   </div>
@@ -195,6 +218,8 @@ export function NutritionClient({ data }: { data: NutritionData }) {
               </SelectField>
               <Field label="Name" name="name" required />
               <Field label="Serving label" name="servingLabel" defaultValue="1 serving" />
+              <Field label="Serving grams" name="servingGrams" type="number" defaultValue="100" />
+              <Field label="Amount grams" name="amountGrams" type="number" defaultValue="100" />
               <Field label="Servings" name="servings" type="number" defaultValue="1" step="0.1" />
               <Field label="Calories" name="calories" type="number" required />
               <Field label="Protein" name="protein" type="number" step="0.1" required />
@@ -249,6 +274,30 @@ export function NutritionClient({ data }: { data: NutritionData }) {
             </div>
           </GlassCard>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Nutrient({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl bg-black/30 px-2 py-2">
+      <p className="font-bold text-zinc-100">{value}</p>
+      <p className="text-[10px] text-zinc-500">{label}</p>
+    </div>
+  );
+}
+
+function MacroPill({ label, value, max, className }: { label: string; value: number; max: number; className: string }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-bold text-white">{label}</span>
+        <span className="text-zinc-400">{Math.round(value)} / {max}g</span>
+      </div>
+      <div className="mt-3 h-2 rounded-full bg-white/10">
+        <div className={`h-full rounded-full ${className}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
