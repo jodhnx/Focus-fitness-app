@@ -32,18 +32,33 @@ export default async function DashboardPage({
       ) : null}
 
       <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.03))] p-4 shadow-glass md:rounded-[2rem] md:p-7">
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-center">
+        <div className="grid gap-4 lg:grid-cols-[1fr_340px] lg:items-center">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-brand-accent md:text-xs">Today</p>
             <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:mt-2 md:text-5xl">Hey, {name}</h1>
             <p className="mt-2 hidden max-w-xl text-sm leading-6 text-zinc-300 sm:block">
               Your live overview: calories remaining, macros, hydration, workouts, weight trend and daily consistency.
             </p>
-            <div className="mt-3 grid grid-cols-4 gap-2 md:mt-5 md:gap-3">
-              <MiniStat label="Remaining" value={`${Math.round(caloriesRemaining)}`} sub="kcal" />
-              <MiniStat label="Eaten" value={`${Math.round(totals.calories)}`} sub="kcal" />
-              <MiniStat label="Protein" value={`${Math.round(totals.protein)}g`} sub={`${proteinTarget}g goal`} />
-              <MiniStat label="Level" value={profile.level} sub={`${profile.xp} XP`} />
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1.15fr_.85fr] md:mt-5 md:gap-3">
+              <div className="rounded-[1.35rem] border border-brand-accent/35 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.28),transparent_42%),rgba(0,0,0,.3)] p-4 shadow-lg shadow-emerald-500/10">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand-accent">Kalorien übrig</p>
+                <div className="mt-2 flex items-end gap-2">
+                  <p className="text-5xl font-black leading-none text-white md:text-6xl">{Math.round(caloriesRemaining)}</p>
+                  <p className="pb-1 text-sm font-bold text-zinc-400">kcal</p>
+                </div>
+                <div className="mt-3">
+                  <div className="mb-1 flex justify-between text-[11px] font-semibold text-zinc-400">
+                    <span>{Math.round(totals.calories)} gegessen</span>
+                    <span>{calorieTarget} Ziel</span>
+                  </div>
+                  <ProgressBar value={totals.calories} max={calorieTarget} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-1">
+                <MiniStat label="Protein" value={`${Math.round(totals.protein)}g`} sub={`${proteinTarget}g Ziel`} />
+                <MiniStat label="Wasser" value={`${totals.waterMl}`} sub={`${profile.water_target_ml} ml`} />
+                <MiniStat label="Level" value={profile.level} sub={`${profile.xp} XP`} />
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-center justify-center gap-3">

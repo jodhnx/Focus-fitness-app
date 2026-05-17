@@ -22,7 +22,13 @@ export default async function WorkoutsPage() {
     muscle_groups: string[];
     exercises: { name: string; sets: string; muscleGroup?: string }[];
   }[];
-  const muscles = [...new Set(exerciseCatalog.map((exercise) => exercise.muscleGroup))];
+  const muscleOrder = ['Chest', 'Back', 'Shoulders', 'Legs', 'Quads', 'Hamstrings', 'Glutes', 'Arms', 'Core', 'Posterior chain'];
+  const exerciseGroups = muscleOrder
+    .map((muscle) => ({
+      muscle,
+      exercises: exerciseCatalog.filter((exercise) => exercise.muscleGroup === muscle),
+    }))
+    .filter((group) => group.exercises.length > 0);
 
   return (
     <div className="space-y-6">
@@ -78,20 +84,33 @@ export default async function WorkoutsPage() {
       ) : null}
 
       <GlassCard>
-        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Exercise database</p>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {muscles.map((muscle) => (
-            <span key={muscle} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
-              {muscle}
-            </span>
-          ))}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Exercise database</p>
+            <h2 className="mt-1 text-xl font-black text-white">Übungen nach Muskelgruppen</h2>
+            <p className="mt-1 text-sm text-zinc-400">Brust, Rücken, Beine, Schultern, Arme und Core sauber getrennt.</p>
+          </div>
+          <div className="rounded-2xl bg-black/25 px-3 py-2 text-center">
+            <p className="text-xl font-black text-brand-accent">{exerciseCatalog.length}</p>
+            <p className="text-[10px] uppercase tracking-widest text-zinc-500">Übungen</p>
+          </div>
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {exerciseCatalog.slice(0, 18).map((exercise) => (
-            <div key={exercise.id} className="rounded-xl bg-black/25 p-3">
-              <p className="text-sm font-bold text-white">{exercise.name}</p>
-              <p className="text-xs text-zinc-500">{exercise.muscleGroup}</p>
-            </div>
+        <div className="mt-4 space-y-4">
+          {exerciseGroups.map((group) => (
+            <section key={group.muscle} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-black text-white">{muscleLabel(group.muscle)}</h3>
+                <span className="rounded-full bg-white/5 px-2 py-1 text-[11px] font-bold text-zinc-400">{group.exercises.length}</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {group.exercises.map((exercise) => (
+                  <div key={exercise.id} className="rounded-xl bg-white/[0.04] p-3">
+                    <p className="text-sm font-bold text-white">{exercise.name}</p>
+                    <p className="text-xs text-zinc-500">{exercise.equipment ?? 'Gym / Bodyweight'}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </GlassCard>
@@ -131,4 +150,20 @@ export default async function WorkoutsPage() {
       </div>
     </div>
   );
+}
+
+function muscleLabel(muscle: string) {
+  const labels: Record<string, string> = {
+    Chest: 'Brust',
+    Back: 'Rücken',
+    Shoulders: 'Schultern',
+    Legs: 'Beine',
+    Quads: 'Quadrizeps',
+    Hamstrings: 'Beinbeuger',
+    Glutes: 'Po / Glutes',
+    Arms: 'Arme',
+    Core: 'Bauch / Core',
+    'Posterior chain': 'Hintere Kette',
+  };
+  return labels[muscle] ?? muscle;
 }
